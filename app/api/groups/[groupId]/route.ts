@@ -36,7 +36,8 @@ export async function GET(
 
   // Check if user is a member
   const isMember = group.members.some(
-    (member) => member.user.id === session.user.id
+    (member: { user: { id: string; name: string; avatar: string | null } }) =>
+      member.user.id === session.user.id
   );
 
   if (!isMember) {
