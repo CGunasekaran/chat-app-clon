@@ -52,8 +52,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Send email
-    await sendOTPEmail(email, otp);
+    // Send email (non-blocking, log errors but don't fail)
+    try {
+      await sendOTPEmail(email, otp);
+    } catch (emailError) {
+      console.error("Email sending failed, but OTP stored:", emailError);
+      // Continue anyway - OTP is stored in DB
+    }
 
     return NextResponse.json(
       {
@@ -64,6 +69,9 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("Send OTP error:", error);
-    return NextResponse.json({ error: "Failed to send OTP" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to send OTP", details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }

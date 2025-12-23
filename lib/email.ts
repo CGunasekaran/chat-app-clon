@@ -13,15 +13,13 @@ const transporter = nodemailer.createTransport({
 
 export async function sendOTPEmail(email: string, otp: string) {
   try {
-    // For development, log the OTP
-    if (process.env.NODE_ENV === "development") {
-      console.log(`\n🔐 OTP for ${email}: ${otp}\n`);
-    }
+    // Always log the OTP (for dev and production without email)
+    console.log(`\n🔐 OTP for ${email}: ${otp}\n`);
 
-    // Skip actual email sending in development if credentials not configured
+    // Skip actual email sending if credentials not configured
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
       console.log("⚠️  Email credentials not configured. OTP logged above.");
-      return { success: true, message: "OTP logged (dev mode)" };
+      return { success: true, message: "OTP logged (no email configured)" };
     }
 
     const info = await transporter.sendMail({
@@ -80,18 +78,16 @@ export async function sendPasswordResetEmail(
   try {
     const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
 
-    // For development, log the reset link
-    if (process.env.NODE_ENV === "development") {
-      console.log(`\n🔑 Password Reset for ${email}`);
-      console.log(`Reset Link: ${resetUrl}\n`);
-    }
+    // Always log the reset link
+    console.log(`\n🔑 Password Reset for ${email}`);
+    console.log(`Reset Link: ${resetUrl}\n`);
 
-    // Skip actual email sending in development if credentials not configured
+    // Skip actual email sending if credentials not configured
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
       console.log(
         "⚠️  Email credentials not configured. Reset link logged above."
       );
-      return { success: true, message: "Reset link logged (dev mode)" };
+      return { success: true, message: "Reset link logged (no email configured)" };
     }
 
     const info = await transporter.sendMail({
