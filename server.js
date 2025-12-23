@@ -56,6 +56,24 @@ app.prepare().then(() => {
       });
     });
 
+    socket.on("add-reaction", (data) => {
+      io.to(data.groupId).emit("reaction-added", {
+        messageId: data.messageId,
+        reaction: data.reaction,
+        groupId: data.groupId,
+      });
+    });
+
+    socket.on("remove-reaction", (data) => {
+      io.to(data.groupId).emit("reaction-removed", {
+        messageId: data.messageId,
+        reactionId: data.reactionId,
+        emoji: data.emoji,
+        userId: data.userId,
+        groupId: data.groupId,
+      });
+    });
+
     socket.on("start-voice-call", (data) => {
       socket.to(data.groupId).emit("incoming-voice-call", data);
     });

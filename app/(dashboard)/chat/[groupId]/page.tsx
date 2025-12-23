@@ -26,6 +26,16 @@ interface Message {
     userId: string;
     readAt: Date;
   }>;
+  reactions?: Array<{
+    id: string;
+    emoji: string;
+    userId: string;
+    user: {
+      id: string;
+      name: string;
+      avatar?: string;
+    };
+  }>;
 }
 
 interface Member {
@@ -247,12 +257,71 @@ export default function ChatPage() {
       }
     );
 
+    socket.on(
+      "reaction-added",
+      ({
+        messageId,
+        reaction,
+      }: {
+        messageId: string;
+        reaction: {
+          id: string;
+          emoji: string;
+          userId: string;
+          user: { id: string; name: string; avatar?: string };
+        };
+      }) => {
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === messageId) {
+              const existingReactions = msg.reactions || [];
+              return {
+                ...msg,
+                reactions: [...existingReactions, reaction],
+              };
+            }
+            return msg;
+          })
+        );
+      }
+    );
+
+    socket.on(
+      "reaction-removed",
+      ({
+        messageId,
+        emoji,
+        userId,
+      }: {
+        messageId: string;
+        emoji: string;
+        userId: string;
+      }) => {
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === messageId) {
+              const updatedReactions = (msg.reactions || []).filter(
+                (r) => !(r.emoji === emoji && r.userId === userId)
+              );
+              return {
+                ...msg,
+                reactions: updatedReactions,
+              };
+            }
+            return msg;
+          })
+        );
+      }
+    );
+
     return () => {
       socket.off("receive-message");
       socket.off("incoming-voice-call");
       socket.off("user-typing");
       socket.off("user-stopped-typing");
       socket.off("messages-read");
+      socket.off("reaction-added");
+      socket.off("reaction-removed");
     };
   }, [socket, groupId, currentUserId]);
 
@@ -346,6 +415,76 @@ export default function ChatPage() {
       });
     } catch (error) {
       console.error("Failed to mark messages as read:", error);
+    }
+  };
+
+  const handleReactionAdd = async (messageId: string, emoji: string) => {
+    try {
+      const response = await fetch(`/api/messages/${messageId}/reactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emoji }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add reaction");
+      }
+
+      const data = await response.json();
+
+      if (data.action === "added") {
+        // Emit socket event for real-time update
+        socket?.emit("add-reaction", {
+          groupId,
+          messageId,
+          reaction: data.reaction,
+        });
+
+        // Update local state
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === messageId) {
+              const existingReactions = msg.reactions || [];
+              return {
+                ...msg,
+                reactions: [...existingReactions, data.reaction],
+              };
+            }
+            return msg;
+          })
+        );
+      } else if (data.action === "removed") {
+        // Emit socket event for removal
+        socket?.emit("remove-reaction", {
+          groupId,
+          messageId,
+          reactionId: data.reaction.id,
+          emoji: data.reaction.emoji,
+          userId: data.reaction.userId,
+        });
+
+        // Update local state
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === messageId) {
+              const updatedReactions = (msg.reactions || []).filter(
+                (r) =>
+                  !(
+                    r.emoji === data.reaction.emoji &&
+                    r.userId === data.reaction.userId
+                  )
+              );
+              return {
+                ...msg,
+                reactions: updatedReactions,
+              };
+            }
+            return msg;
+          })
+        );
+      }
+    } catch (error) {
+      console.error("Failed to handle reaction:", error);
     }
   };
 
@@ -449,6 +588,7 @@ export default function ChatPage() {
           currentUserId={currentUserId}
           groupMembers={group?.members}
           onMessageVisible={handleMessageVisible}
+          onReactionAdd={handleReactionAdd}
         />
         {Object.keys(typingUsers).length > 0 && (
           <div className="px-6 py-2 text-sm text-gray-500 italic">

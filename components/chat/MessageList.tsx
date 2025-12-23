@@ -1,9 +1,20 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { format } from "date-fns";
-import { Check, CheckCheck, Download, FileText } from "lucide-react";
+import { Check, CheckCheck, Download, FileText, Smile } from "lucide-react";
+
+interface Reaction {
+  id: string;
+  emoji: string;
+  userId: string;
+  user: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+}
 
 interface Message {
   id: string;
@@ -22,6 +33,7 @@ interface Message {
     userId: string;
     readAt: Date;
   }>;
+  reactions?: Reaction[];
 }
 
 interface MessageListProps {
@@ -29,6 +41,7 @@ interface MessageListProps {
   currentUserId: string;
   groupMembers?: Array<{ user: { id: string; name: string } }>;
   onMessageVisible?: (messageId: string) => void;
+  onReactionAdd?: (messageId: string, emoji: string) => void;
 }
 
 export default function MessageList({
@@ -36,9 +49,13 @@ export default function MessageList({
   currentUserId,
   groupMembers = [],
   onMessageVisible,
+  onReactionAdd,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
+
+  const emojis = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -86,6 +103,28 @@ export default function MessageList({
         const member = groupMembers.find((m) => m.user.id === read.userId);
         return member ? member.user.name : "Unknown";
       });
+  };
+
+  const handleReactionClick = (messageId: string, emoji: string) => {
+    if (onReactionAdd) {
+      onReactionAdd(messageId, emoji);
+    }
+    setShowEmojiPicker(null);
+  };
+
+  const getReactionGroups = (reactions?: Reaction[]) => {
+    if (!reactions) return [];
+    const groups = new Map<string, Reaction[]>();
+    reactions.forEach((reaction) => {
+      const existing = groups.get(reaction.emoji) || [];
+      groups.set(reaction.emoji, [...existing, reaction]);
+    });
+    return Array.from(groups.entries()).map(([emoji, reactions]) => ({
+      emoji,
+      count: reactions.length,
+      users: reactions.map((r) => r.user),
+      hasCurrentUser: reactions.some((r) => r.userId === currentUserId),
+    }));
   };
 
   if (!Array.isArray(messages)) {
@@ -222,6 +261,70 @@ export default function MessageList({
                       <p className="text-sm break-words">{message.content}</p>
                     </div>
                   )}
+                </div>
+
+                {/* Reactions */}
+                <div className="flex items-center gap-2 mt-1 px-1">
+                  {getReactionGroups(message.reactions).map((group) => (
+                    <button
+                      key={group.emoji}
+                      onClick={() =>
+                        handleReactionClick(message.id, group.emoji)
+                      }
+                      className={`relative group flex items-center gap-1 px-2 py-1 rounded-full text-xs transition ${
+                        group.hasCurrentUser
+                          ? "bg-indigo-100 border border-indigo-300"
+                          : "bg-gray-100 border border-gray-200 hover:bg-gray-200"
+                      }`}
+                    >
+                      <span>{group.emoji}</span>
+                      <span className="font-medium text-gray-700">
+                        {group.count}
+                      </span>
+                      {/* Tooltip */}
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                        <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
+                          {group.users.map((user, idx) => (
+                            <p key={idx}>
+                              {group.emoji} {user.name}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+
+                  {/* Add Reaction Button */}
+                  <div className="relative">
+                    <button
+                      onClick={() =>
+                        setShowEmojiPicker(
+                          showEmojiPicker === message.id ? null : message.id
+                        )
+                      }
+                      className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 transition text-gray-600"
+                      title="Add reaction"
+                    >
+                      <Smile className="w-4 h-4" />
+                    </button>
+
+                    {/* Emoji Picker */}
+                    {showEmojiPicker === message.id && (
+                      <div className="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg border border-gray-200 p-2 flex gap-1 z-20">
+                        {emojis.map((emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() =>
+                              handleReactionClick(message.id, emoji)
+                            }
+                            className="w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-100 rounded transition"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Time and Read Receipt */}

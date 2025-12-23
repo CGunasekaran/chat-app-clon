@@ -21,6 +21,20 @@ export async function GET(req: NextRequest) {
           readAt: true,
         },
       },
+      reactions: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              avatar: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -52,6 +66,17 @@ export async function POST(req: NextRequest) {
         select: {
           userId: true,
           readAt: true,
+        },
+      },
+      reactions: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              avatar: true,
+            },
+          },
         },
       },
     },

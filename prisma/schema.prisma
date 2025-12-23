@@ -8,19 +8,20 @@ generator client {
 }
 
 model User {
-  id            String        @id @default(cuid())
-  email         String        @unique
+  id            String            @id @default(cuid())
+  email         String            @unique
   name          String
   password      String
   avatar        String?
-  isAdmin       Boolean       @default(false)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  isAdmin       Boolean           @default(false)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   
   messages      Message[]
   groups        GroupMember[]
-  createdGroups Group[]       @relation("GroupAdmin")
+  createdGroups Group[]           @relation("GroupAdmin")
   readMessages  MessageRead[]
+  reactions     MessageReaction[]
 }
 
 model Group {
@@ -53,21 +54,22 @@ model GroupMember {
 }
 
 model Message {
-  id        String        @id @default(cuid())
+  id        String            @id @default(cuid())
   content   String
-  type      String        @default("text") // text, voice, image, file
+  type      String            @default("text") // text, voice, image, file
   fileUrl   String?
   fileName  String?
   fileType  String?
-  createdAt DateTime      @default(now())
+  createdAt DateTime          @default(now())
   
   senderId  String
-  sender    User          @relation(fields: [senderId], references: [id])
+  sender    User              @relation(fields: [senderId], references: [id])
   
   groupId   String
-  group     Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group     Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
   
   readBy    MessageRead[]
+  reactions MessageReaction[]
 }
 
 model MessageRead {
@@ -104,4 +106,19 @@ model PasswordReset {
   
   @@index([email])
   @@index([token])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  emoji     String
+  createdAt DateTime @default(now())
+  
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
 }
