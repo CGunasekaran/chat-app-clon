@@ -57,10 +57,26 @@ export default function MessageList({
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const emojis = [
-    "👍", "❤️", "😂", "😮", "😢", "🙏",
-    "🔥", "🎉", "👏", "💯", "✨", "💪",
-    "🤔", "😍", "🥳", "😎", "🤗", "👀",
-    "💖", "⭐"
+    "👍",
+    "❤️",
+    "😂",
+    "😮",
+    "😢",
+    "🙏",
+    "🔥",
+    "🎉",
+    "👏",
+    "💯",
+    "✨",
+    "💪",
+    "🤔",
+    "😍",
+    "🥳",
+    "😎",
+    "🤗",
+    "👀",
+    "💖",
+    "⭐",
   ];
 
   useEffect(() => {
@@ -290,25 +306,25 @@ export default function MessageList({
                 </div>
 
                 {/* Reactions */}
-                <div className="flex items-center gap-2 mt-1 px-1">
+                <div className="flex flex-wrap items-center gap-1 mt-2 px-1 max-w-full">
                   {getReactionGroups(message.reactions).map((group) => (
                     <button
                       key={group.emoji}
                       onClick={() =>
                         handleReactionClick(message.id, group.emoji)
                       }
-                      className={`relative group flex items-center gap-1 px-2 py-1 rounded-full text-xs transition ${
+                      className={`relative group flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition ${
                         group.hasCurrentUser
                           ? "bg-indigo-100 border border-indigo-300"
                           : "bg-gray-100 border border-gray-200 hover:bg-gray-200"
                       }`}
                     >
-                      <span>{group.emoji}</span>
-                      <span className="font-medium text-gray-700">
+                      <span className="text-base">{group.emoji}</span>
+                      <span className="font-medium text-gray-700 text-xs">
                         {group.count}
                       </span>
                       {/* Tooltip */}
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
                         <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
                           {group.users.map((user, idx) => (
                             <p key={idx}>
@@ -321,7 +337,7 @@ export default function MessageList({
                   ))}
 
                   {/* Add Reaction Button */}
-                  <div className="relative" ref={pickerRef}>
+                  <div className="relative flex-shrink-0" ref={pickerRef}>
                     <button
                       onClick={() =>
                         setShowEmojiPicker(
@@ -336,7 +352,11 @@ export default function MessageList({
 
                     {/* Emoji Picker */}
                     {showEmojiPicker === message.id && (
-                      <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-50 min-w-[280px]">
+                      <div
+                        className={`absolute bottom-full mb-2 bg-white rounded-xl shadow-xl border border-gray-200 p-2.5 z-50 w-[240px] sm:w-[260px] ${
+                          isOwn ? "right-0" : "left-0"
+                        }`}
+                      >
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-xs font-semibold text-gray-600">
                             Add Reaction
@@ -346,12 +366,13 @@ export default function MessageList({
                               e.stopPropagation();
                               setShowEmojiPicker(null);
                             }}
-                            className="text-gray-400 hover:text-gray-600 transition"
+                            className="text-gray-400 hover:text-gray-600 transition p-1"
+                            aria-label="Close"
                           >
                             ✕
                           </button>
                         </div>
-                        <div className="grid grid-cols-6 gap-1 max-h-[180px] overflow-y-auto">
+                        <div className="grid grid-cols-5 sm:grid-cols-6 gap-1 max-h-[160px] overflow-y-auto">
                           {emojis.map((emoji) => (
                             <button
                               key={emoji}
@@ -359,7 +380,7 @@ export default function MessageList({
                                 e.stopPropagation();
                                 handleReactionClick(message.id, emoji);
                               }}
-                              className="w-10 h-10 flex items-center justify-center text-2xl hover:bg-gray-100 rounded-lg transition transform hover:scale-110"
+                              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-xl sm:text-2xl hover:bg-gray-100 rounded-lg transition transform hover:scale-110"
                               title={emoji}
                             >
                               {emoji}
