@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Mic, X, Upload, Image, FileText } from "lucide-react";
+import { Send, Mic, X, Upload, Image, FileText, Reply, Circle } from "lucide-react";
+
+interface ReplyMessage {
+  id: string;
+  content: string;
+  type: string;
+  sender: {
+    name: string;
+  };
+}
 
 interface MessageInputProps {
   onSendMessage: (
@@ -16,6 +25,8 @@ interface MessageInputProps {
   onStartVoiceCall: () => void;
   onTyping: () => void;
   onStopTyping: () => void;
+  replyTo?: ReplyMessage | null;
+  onCancelReply?: () => void;
 }
 
 export default function MessageInput({
@@ -23,10 +34,14 @@ export default function MessageInput({
   onStartVoiceCall,
   onTyping,
   onStopTyping,
+  replyTo,
+  onCancelReply,
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [showFileMenu, setShowFileMenu] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const [previewFile, setPreviewFile] = useState<{
     name: string;
     url: string;
@@ -35,6 +50,9 @@ export default function MessageInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Close file menu when clicking outside
   useEffect(() => {
@@ -130,6 +148,100 @@ export default function MessageInput({
     }
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: "audio/webm",
+        });
+        stream.getTracks().forEach((track) => track.stop());
+        await handleVoiceUpload(audioBlob);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      // Update recording time
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error("Error accessing microphone:", error);
+      alert("Could not access microphone");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setRecordingTime(0);
+      audioChunksRef.current = [];
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+    }
+  };
+
+  const handleVoiceUpload = async (audioBlob: Blob) => {
+    try {
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append("file", audioBlob, `voice-${Date.now()}.webm`);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await response.json();
+
+      onSendMessage("", {
+        fileUrl: data.fileUrl,
+        fileName: data.fileName,
+        fileType: "audio/webm",
+        type: "file",
+      });
+    } catch (error) {
+      console.error("Voice upload error:", error);
+      alert("Failed to send voice message");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -149,6 +261,29 @@ export default function MessageInput({
 
   return (
     <div className="border-t bg-white">
+      {/* Reply Preview */}
+      {replyTo && (
+        <div className="p-3 border-b bg-indigo-50 flex items-start gap-3">
+          <Reply className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-indigo-600">
+              Replying to {replyTo.sender.name}
+            </p>
+            <p className="text-sm text-gray-700 truncate">
+              {replyTo.type === "voice" ? "🎤 Voice message" : replyTo.content}
+            </p>
+          </div>
+          {onCancelReply && (
+            <button
+              onClick={onCancelReply}
+              className="text-gray-400 hover:text-gray-600 p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* File Preview */}
       {previewFile && (
         <div className="p-4 border-b bg-gray-50">
@@ -256,21 +391,47 @@ export default function MessageInput({
             </div>
           </div>
 
-          <button
-            onClick={onStartVoiceCall}
-            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition"
-            title="Start voice call"
-          >
-            <Mic className="w-5 h-5 text-gray-600" />
-          </button>
+          {/* Voice Recording or Send Button */}
+          {isRecording ? (
+            <div className="flex items-center gap-2 px-4 py-2 bg-red-50 rounded-full">
+              <Circle className="w-3 h-3 text-red-600 animate-pulse fill-current" />
+              <span className="text-sm text-red-600 font-medium">
+                {formatRecordingTime(recordingTime)}
+              </span>
+              <button
+                onClick={cancelRecording}
+                className="ml-2 text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <button
+                onClick={stopRecording}
+                className="ml-1 p-2 rounded-full bg-indigo-600 hover:bg-indigo-700 transition"
+                title="Send voice message"
+              >
+                <Send className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={startRecording}
+                disabled={isUploading || !!message.trim()}
+                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition disabled:opacity-50"
+                title="Record voice message"
+              >
+                <Mic className="w-5 h-5 text-gray-600" />
+              </button>
 
-          <button
-            onClick={handleSend}
-            disabled={!message.trim() || isUploading}
-            className="p-2 rounded-full bg-indigo-600 hover:bg-gradient-to-r from-indigo-600 to-purple-600 disabled:bg-gray-300 transition"
-          >
-            <Send className="w-5 h-5 text-white" />
-          </button>
+              <button
+                onClick={handleSend}
+                disabled={!message.trim() || isUploading}
+                className="p-2 rounded-full bg-indigo-600 hover:bg-gradient-to-r from-indigo-600 to-purple-600 disabled:bg-gray-300 transition"
+              >
+                <Send className="w-5 h-5 text-white" />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

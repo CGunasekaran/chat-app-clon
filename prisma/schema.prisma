@@ -68,6 +68,10 @@ model Message {
   groupId   String
   group     Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
   
+  replyToId String?
+  replyTo   Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Message[]         @relation("MessageReplies")
+  
   readBy    MessageRead[]
   reactions MessageReaction[]
 }

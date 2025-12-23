@@ -7,7 +7,7 @@ import MessageList from "@/components/chat/MessageList";
 import MessageInput from "@/components/chat/MessageInput";
 import VoiceCall from "@/components/chat/VoiceCall";
 import AlertDialog from "@/components/ui/AlertDialog";
-import { ArrowLeft, Users, Trash2, X } from "lucide-react";
+import { ArrowLeft, Users, Trash2, X, Search } from "lucide-react";
 
 interface Message {
   id: string;
@@ -67,6 +67,10 @@ export default function ChatPage() {
   const [group, setGroup] = useState<Group | null>(null);
   const [showMembers, setShowMembers] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Message[]>([]);
+  const [showSearch, setShowSearch] = useState(false);
   const [typingUsers, setTypingUsers] = useState<{ [userId: string]: string }>(
     {}
   );
@@ -87,12 +91,13 @@ export default function ChatPage() {
       if (e.key === "Escape") {
         if (showMembers) setShowMembers(false);
         if (showDeleteConfirm) setShowDeleteConfirm(false);
+        if (showSearch) setShowSearch(false);
       }
     };
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [showMembers, showDeleteConfirm]);
+  }, [showMembers, showDeleteConfirm, showSearch]);
 
   useEffect(() => {
     // Fetch group details
@@ -340,12 +345,17 @@ export default function ChatPage() {
         ? {
             groupId,
             content: content || "",
-            type: file.fileType.startsWith("image/") ? "image" : "file",
+            type: file.fileType.startsWith("image/")
+              ? "image"
+              : file.fileType.startsWith("audio/")
+              ? "voice"
+              : "file",
             fileUrl: file.fileUrl,
             fileName: file.fileName,
             fileType: file.fileType,
+            replyToId: replyTo?.id,
           }
-        : { groupId, content };
+        : { groupId, content, replyToId: replyTo?.id };
 
       const response = await fetch("/api/messages", {
         method: "POST",
@@ -373,6 +383,15 @@ export default function ChatPage() {
             setAlertDialog({ isOpen: false, message: "", type: "error" }),
         });
         return;
+      }
+
+      socket?.emit("send-message", {
+        groupId,
+        ...newMessage,
+      });
+
+      // Clear reply after sending
+      setReplyTo(null);
       }
 
       socket?.emit("send-message", {
@@ -499,6 +518,36 @@ export default function ChatPage() {
     socket?.emit("start-voice-call", { groupId });
   };
 
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/messages/search?groupId=${groupId}&query=${encodeURIComponent(
+          query
+        )}`
+      );
+      if (response.ok) {
+        const results = await response.json();
+        setSearchResults(results);
+      }
+    } catch (error) {
+      console.error("Search failed:", error);
+    }
+  };
+
+  const handleReply = (message: Message) => {
+    setReplyTo(message);
+  };
+
+  const handleCancelReply = () => {
+    setReplyTo(null);
+  };
+
   const handleDeleteGroup = async () => {
     try {
       const response = await fetch(`/api/groups/${groupId}`, {
@@ -569,6 +618,13 @@ export default function ChatPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowSearch(!showSearch)}
+              className="p-2 hover:from-indigo-700 hover:to-purple-700 rounded-full transition-colors"
+              title="Search messages"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+            <button
               onClick={() => setShowMembers(true)}
               className="p-2 hover:from-indigo-700 hover:to-purple-700 rounded-full transition-colors"
               title="View members"
@@ -586,6 +642,43 @@ export default function ChatPage() {
             )}
           </div>
         </div>
+
+        {/* Search Bar */}
+        {showSearch && (
+          <div className="mt-3 px-2">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search messages..."
+              className="w-full px-4 py-2 rounded-lg text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+            />
+            {searchResults.length > 0 && (
+              <div className="mt-2 bg-white rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {searchResults.map((result) => (
+                  <div
+                    key={result.id}
+                    className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                    onClick={() => {
+                      const element = document.querySelector(
+                        `[data-message-id="${result.id}"]`
+                      );
+                      element?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      setShowSearch(false);
+                    }}
+                  >
+                    <p className="text-xs font-semibold text-indigo-600">
+                      {result.sender.name}
+                    </p>
+                    <p className="text-sm text-gray-900 truncate">
+                      {result.content}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -595,6 +688,7 @@ export default function ChatPage() {
           groupMembers={group?.members}
           onMessageVisible={handleMessageVisible}
           onReactionAdd={handleReactionAdd}
+          onReply={handleReply}
         />
         {Object.keys(typingUsers).length > 0 && (
           <div className="px-6 py-2 text-sm text-gray-500 italic">
@@ -613,6 +707,8 @@ export default function ChatPage() {
         onStartVoiceCall={handleStartVoiceCall}
         onTyping={handleTyping}
         onStopTyping={handleStopTyping}
+        replyTo={replyTo}
+        onCancelReply={handleCancelReply}
       />
 
       {isVoiceCallActive && (

@@ -35,6 +35,19 @@ export async function GET(req: NextRequest) {
           createdAt: "asc",
         },
       },
+      replyTo: {
+        select: {
+          id: true,
+          content: true,
+          type: true,
+          sender: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -47,7 +60,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { groupId, content, type, fileUrl, fileName, fileType } =
+  const { groupId, content, type, fileUrl, fileName, fileType, replyToId } =
     await req.json();
 
   const message = await prisma.message.create({
@@ -59,6 +72,7 @@ export async function POST(req: NextRequest) {
       fileType,
       groupId,
       senderId: session.user.id,
+      replyToId: replyToId || undefined,
     },
     include: {
       sender: { select: { id: true, name: true, avatar: true } },
@@ -75,6 +89,19 @@ export async function POST(req: NextRequest) {
               id: true,
               name: true,
               avatar: true,
+            },
+          },
+        },
+      },
+      replyTo: {
+        select: {
+          id: true,
+          content: true,
+          type: true,
+          sender: {
+            select: {
+              id: true,
+              name: true,
             },
           },
         },

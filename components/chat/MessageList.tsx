@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { format } from "date-fns";
-import { Check, CheckCheck, Download, FileText, Smile } from "lucide-react";
+import { Check, CheckCheck, Download, FileText, Smile, Reply, Mic, Play, Pause } from "lucide-react";
 
 interface Reaction {
   id: string;
@@ -34,6 +34,15 @@ interface Message {
     readAt: Date;
   }>;
   reactions?: Reaction[];
+  replyTo?: {
+    id: string;
+    content: string;
+    type: string;
+    sender: {
+      id: string;
+      name: string;
+    };
+  };
 }
 
 interface MessageListProps {
@@ -42,6 +51,7 @@ interface MessageListProps {
   groupMembers?: Array<{ user: { id: string; name: string } }>;
   onMessageVisible?: (messageId: string) => void;
   onReactionAdd?: (messageId: string, emoji: string) => void;
+  onReply?: (message: Message) => void;
 }
 
 export default function MessageList({
@@ -50,6 +60,7 @@ export default function MessageList({
   groupMembers = [],
   onMessageVisible,
   onReactionAdd,
+  onReply,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -62,6 +73,8 @@ export default function MessageList({
   }>({});
   const pickerRef = useRef<HTMLDivElement>(null);
   const buttonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const audioRefs = useRef<{ [key: string]: HTMLAudioElement | null }>({});
 
   const emojis = [
     "👍",
@@ -216,6 +229,26 @@ export default function MessageList({
     setShowEmojiPicker(messageId);
   };
 
+  const handleAudioToggle = (messageId: string) => {
+    const audio = audioRefs.current[messageId];
+    if (!audio) return;
+
+    if (playingAudio === messageId) {
+      audio.pause();
+      setPlayingAudio(null);
+    } else {
+      // Pause any currently playing audio
+      if (playingAudio) {
+        const currentAudio = audioRefs.current[playingAudio];
+        if (currentAudio) currentAudio.pause();
+      }
+      audio.play();
+      setPlayingAudio(messageId);
+    }
+
+    audio.onended = () => setPlayingAudio(null);
+  };
+
   const getReactionGroups = (reactions?: Reaction[]) => {
     if (!reactions) return [];
     const groups = new Map<string, Reaction[]>();
@@ -291,6 +324,83 @@ export default function MessageList({
                       : "bg-white text-gray-900 shadow"
                   }`}
                 >
+                  {/* Replied Message Preview */}
+                  {message.replyTo && (
+                    <div
+                      className={`border-l-4 p-2 m-2 mb-0 ${
+                        isOwn
+                          ? "border-indigo-300 bg-indigo-500 bg-opacity-30"
+                          : "border-gray-300 bg-gray-100"
+                      }`}
+                    >
+                      <p
+                        className={`text-xs font-semibold ${
+                          isOwn ? "text-indigo-100" : "text-indigo-600"
+                        }`}
+                      >
+                        {message.replyTo.sender.name}
+                      </p>
+                      <p
+                        className={`text-xs truncate ${
+                          isOwn ? "text-indigo-100" : "text-gray-600"
+                        }`}
+                      >
+                        {message.replyTo.type === "voice"
+                          ? "🎤 Voice message"
+                          : message.replyTo.content}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Voice Message */}
+                  {message.type === "voice" && message.fileUrl && (
+                    <div className="p-3 flex items-center gap-3">
+                      <button
+                        onClick={() => handleAudioToggle(message.id)}
+                        className={`p-3 rounded-full transition ${
+                          isOwn
+                            ? "bg-indigo-700 hover:bg-indigo-800"
+                            : "bg-indigo-100 hover:bg-indigo-200"
+                        }`}
+                      >
+                        {playingAudio === message.id ? (
+                          <Pause
+                            className={`w-5 h-5 ${
+                              isOwn ? "text-white" : "text-indigo-600"
+                            }`}
+                          />
+                        ) : (
+                          <Play
+                            className={`w-5 h-5 ${
+                              isOwn ? "text-white" : "text-indigo-600"
+                            }`}
+                          />
+                        )}
+                      </button>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Mic
+                            className={`w-4 h-4 ${
+                              isOwn ? "text-indigo-200" : "text-gray-500"
+                            }`}
+                          />
+                          <p
+                            className={`text-xs ${
+                              isOwn ? "text-indigo-200" : "text-gray-500"
+                            }`}
+                          >
+                            Voice message
+                          </p>
+                        </div>
+                      </div>
+                      <audio
+                        ref={(el) => (audioRefs.current[message.id] = el)}
+                        src={message.fileUrl}
+                        preload="metadata"
+                      />
+                    </div>
+                  )}
+
                   {/* Image Message */}
                   {isImage && (
                     <div className="relative">
@@ -413,34 +523,45 @@ export default function MessageList({
 
                 {/* Time and Read Receipt */}
                 <div
-                  className={`flex items-center gap-1 mt-1 px-1 ${
-                    isOwn ? "justify-end" : ""
+                  className={`flex items-center gap-2 mt-1 px-1 ${
+                    isOwn ? "justify-end" : "justify-between"
                   }`}
                 >
-                  <p className="text-xs text-gray-500">
-                    {format(new Date(message.createdAt), "HH:mm")}
-                  </p>
-                  {isOwn && (
-                    <div className="relative group">
-                      <span className="text-xs cursor-pointer">
-                        {isMessageRead(message) ? (
-                          <CheckCheck className="w-3 h-3 text-indigo-600" />
-                        ) : (
-                          <Check className="w-3 h-3 text-gray-400" />
-                        )}
-                      </span>
-                      {isMessageRead(message) &&
-                        getReadByNames(message).length > 0 && (
-                          <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block z-10">
-                            <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
-                              <p className="font-semibold mb-1">Read by:</p>
-                              {getReadByNames(message).map((name, idx) => (
-                                <p key={idx}>• {name}</p>
-                              ))}
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs text-gray-500">
+                      {format(new Date(message.createdAt), "HH:mm")}
+                    </p>
+                    {isOwn && (
+                      <div className="relative group">
+                        <span className="text-xs cursor-pointer">
+                          {isMessageRead(message) ? (
+                            <CheckCheck className="w-3 h-3 text-indigo-600" />
+                          ) : (
+                            <Check className="w-3 h-3 text-gray-400" />
+                          )}
+                        </span>
+                        {isMessageRead(message) &&
+                          getReadByNames(message).length > 0 && (
+                            <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block z-10">
+                              <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
+                                <p className="font-semibold mb-1">Read by:</p>
+                                {getReadByNames(message).map((name, idx) => (
+                                  <p key={idx}>• {name}</p>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                    </div>
+                          )}
+                      </div>
+                    )}
+                  </div>
+                  {!isOwn && onReply && (
+                    <button
+                      onClick={() => onReply(message)}
+                      className="text-gray-400 hover:text-indigo-600 transition p-1 rounded hover:bg-gray-100"
+                      title="Reply"
+                    >
+                      <Reply className="w-3.5 h-3.5" />
+                    </button>
                   )}
                 </div>
               </div>
