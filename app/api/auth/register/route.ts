@@ -33,6 +33,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check if email is verified
+    const verification = await prisma.emailVerification.findFirst({
+      where: {
+        email,
+        verified: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    if (!verification) {
+      return NextResponse.json(
+        { error: "Email not verified. Please verify your email first." },
+        { status: 400 }
+      );
+    }
+
+    // Check if verification is not too old (valid for 1 hour)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    if (verification.createdAt < oneHourAgo) {
+      return NextResponse.json(
+        { error: "Email verification expired. Please verify again." },
+        { status: 400 }
+      );
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -49,6 +76,11 @@ export async function POST(req: NextRequest) {
         email: true,
         avatar: true,
       },
+    });
+
+    // Delete used verification records
+    await prisma.emailVerification.deleteMany({
+      where: { email },
     });
 
     return NextResponse.json(
