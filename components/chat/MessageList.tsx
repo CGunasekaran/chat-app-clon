@@ -54,7 +54,14 @@ export default function MessageList({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
+  const [pickerPosition, setPickerPosition] = useState<{
+    top?: number;
+    bottom?: number;
+    left?: number;
+    right?: number;
+  }>({});
   const pickerRef = useRef<HTMLDivElement>(null);
+  const buttonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
 
   const emojis = [
     "👍",
@@ -152,6 +159,55 @@ export default function MessageList({
       onReactionAdd(messageId, emoji);
     }
     setShowEmojiPicker(null);
+  };
+
+  const handleEmojiPickerToggle = (messageId: string, isOwn: boolean) => {
+    if (showEmojiPicker === messageId) {
+      setShowEmojiPicker(null);
+      return;
+    }
+
+    const button = buttonRefs.current[messageId];
+    if (!button) return;
+
+    const rect = button.getBoundingClientRect();
+    const pickerWidth = 240; // mobile width
+    const pickerHeight = 220; // approximate height with header
+    const spacing = 8; // mb-2 = 8px
+
+    // Check if there's enough space above
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const showBelow = spaceAbove < pickerHeight + spacing;
+
+    // Calculate horizontal position
+    let position: typeof pickerPosition = {};
+
+    if (showBelow) {
+      // Show below the button
+      position.top = rect.bottom + spacing;
+    } else {
+      // Show above the button
+      position.bottom = window.innerHeight - rect.top + spacing;
+    }
+
+    // Align based on message ownership
+    if (isOwn) {
+      position.right = window.innerWidth - rect.right;
+    } else {
+      position.left = rect.left;
+    }
+
+    // Ensure picker stays within viewport
+    if (position.left !== undefined && position.left + pickerWidth > window.innerWidth) {
+      position.left = window.innerWidth - pickerWidth - 16;
+    }
+    if (position.right !== undefined && position.right + pickerWidth > window.innerWidth) {
+      position.right = window.innerWidth - pickerWidth - 16;
+    }
+
+    setPickerPosition(position);
+    setShowEmojiPicker(messageId);
   };
 
   const getReactionGroups = (reactions?: Reaction[]) => {
@@ -337,58 +393,17 @@ export default function MessageList({
                   ))}
 
                   {/* Add Reaction Button */}
-                  <div className="relative flex-shrink-0" ref={pickerRef}>
+                  <div className="relative flex-shrink-0">
                     <button
+                      ref={(el) => (buttonRefs.current[message.id] = el)}
                       onClick={() =>
-                        setShowEmojiPicker(
-                          showEmojiPicker === message.id ? null : message.id
-                        )
+                        handleEmojiPickerToggle(message.id, isOwn)
                       }
                       className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 transition text-gray-600"
                       title="Add reaction"
                     >
                       <Smile className="w-4 h-4" />
                     </button>
-
-                    {/* Emoji Picker */}
-                    {showEmojiPicker === message.id && (
-                      <div
-                        className={`absolute bottom-full mb-2 bg-white rounded-xl shadow-xl border border-gray-200 p-2.5 z-50 w-[240px] sm:w-[260px] ${
-                          isOwn ? "right-0" : "left-0"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-semibold text-gray-600">
-                            Add Reaction
-                          </p>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowEmojiPicker(null);
-                            }}
-                            className="text-gray-400 hover:text-gray-600 transition p-1"
-                            aria-label="Close"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-5 sm:grid-cols-6 gap-1 max-h-[160px] overflow-y-auto">
-                          {emojis.map((emoji) => (
-                            <button
-                              key={emoji}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReactionClick(message.id, emoji);
-                              }}
-                              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-xl sm:text-2xl hover:bg-gray-100 rounded-lg transition transform hover:scale-110"
-                              title={emoji}
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -430,6 +445,51 @@ export default function MessageList({
         );
       })}
       <div ref={messagesEndRef} />
+
+      {/* Fixed Position Emoji Picker */}
+      {showEmojiPicker && (
+        <div
+          ref={pickerRef}
+          className="fixed bg-white rounded-xl shadow-2xl border border-gray-200 p-2.5 z-[100] w-[240px] sm:w-[260px]"
+          style={{
+            top: pickerPosition.top,
+            bottom: pickerPosition.bottom,
+            left: pickerPosition.left,
+            right: pickerPosition.right,
+          }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-gray-600">
+              Add Reaction
+            </p>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowEmojiPicker(null);
+              }}
+              className="text-gray-400 hover:text-gray-600 transition p-1"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="grid grid-cols-5 sm:grid-cols-6 gap-1 max-h-[160px] overflow-y-auto">
+            {emojis.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleReactionClick(showEmojiPicker, emoji);
+                }}
+                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-xl sm:text-2xl hover:bg-gray-100 rounded-lg transition transform hover:scale-110"
+                title={emoji}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
