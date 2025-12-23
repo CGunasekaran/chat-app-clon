@@ -199,10 +199,16 @@ export default function MessageList({
     }
 
     // Ensure picker stays within viewport
-    if (position.left !== undefined && position.left + pickerWidth > window.innerWidth) {
+    if (
+      position.left !== undefined &&
+      position.left + pickerWidth > window.innerWidth
+    ) {
       position.left = window.innerWidth - pickerWidth - 16;
     }
-    if (position.right !== undefined && position.right + pickerWidth > window.innerWidth) {
+    if (
+      position.right !== undefined &&
+      position.right + pickerWidth > window.innerWidth
+    ) {
       position.right = window.innerWidth - pickerWidth - 16;
     }
 
@@ -396,9 +402,7 @@ export default function MessageList({
                   <div className="relative flex-shrink-0">
                     <button
                       ref={(el) => (buttonRefs.current[message.id] = el)}
-                      onClick={() =>
-                        handleEmojiPickerToggle(message.id, isOwn)
-                      }
+                      onClick={() => handleEmojiPickerToggle(message.id, isOwn)}
                       className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 transition text-gray-600"
                       title="Add reaction"
                     >
@@ -459,9 +463,7 @@ export default function MessageList({
           }}
         >
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-gray-600">
-              Add Reaction
-            </p>
+            <p className="text-xs font-semibold text-gray-600">Add Reaction</p>
             <button
               onClick={(e) => {
                 e.stopPropagation();

@@ -271,18 +271,21 @@ export default function ChatPage() {
           user: { id: string; name: string; avatar?: string };
         };
       }) => {
-        setMessages((prev) =>
-          prev.map((msg) => {
-            if (msg.id === messageId) {
-              const existingReactions = msg.reactions || [];
-              return {
-                ...msg,
-                reactions: [...existingReactions, reaction],
-              };
-            }
-            return msg;
-          })
-        );
+        // Only update if the reaction is from another user
+        if (reaction.userId !== currentUserId) {
+          setMessages((prev) =>
+            prev.map((msg) => {
+              if (msg.id === messageId) {
+                const existingReactions = msg.reactions || [];
+                return {
+                  ...msg,
+                  reactions: [...existingReactions, reaction],
+                };
+              }
+              return msg;
+            })
+          );
+        }
       }
     );
 
@@ -297,20 +300,23 @@ export default function ChatPage() {
         emoji: string;
         userId: string;
       }) => {
-        setMessages((prev) =>
-          prev.map((msg) => {
-            if (msg.id === messageId) {
-              const updatedReactions = (msg.reactions || []).filter(
-                (r) => !(r.emoji === emoji && r.userId === userId)
-              );
-              return {
-                ...msg,
-                reactions: updatedReactions,
-              };
-            }
-            return msg;
-          })
-        );
+        // Only update if the reaction removal is from another user
+        if (userId !== currentUserId) {
+          setMessages((prev) =>
+            prev.map((msg) => {
+              if (msg.id === messageId) {
+                const updatedReactions = (msg.reactions || []).filter(
+                  (r) => !(r.emoji === emoji && r.userId === userId)
+                );
+                return {
+                  ...msg,
+                  reactions: updatedReactions,
+                };
+              }
+              return msg;
+            })
+          );
+        }
       }
     );
 
