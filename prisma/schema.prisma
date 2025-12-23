@@ -82,3 +82,26 @@ model MessageRead {
   
   @@unique([messageId, userId])
 }
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  email     String
+  otp       String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  
+  @@index([email])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  
+  @@index([email])
+  @@index([token])
+}
