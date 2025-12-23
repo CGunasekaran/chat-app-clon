@@ -645,7 +645,7 @@ export default function ChatPage() {
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search messages..."
-              className="w-full px-4 py-2 rounded-lg text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+              className="w-full px-4 py-2 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-white focus:ring-opacity-50 focus:outline-none"
             />
             {searchResults.length > 0 && (
               <div className="mt-2 bg-white rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -657,7 +657,10 @@ export default function ChatPage() {
                       const element = document.querySelector(
                         `[data-message-id="${result.id}"]`
                       );
-                      element?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      element?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
                       setShowSearch(false);
                     }}
                   >
