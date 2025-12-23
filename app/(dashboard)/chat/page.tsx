@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import AlertDialog from "@/components/ui/AlertDialog";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 
 interface Group {
   id: string;
@@ -78,6 +79,9 @@ export default function ChatDashboard() {
     message: "",
     type: "error",
   });
+
+  // Enable session timeout - auto logout after 15 minutes of inactivity
+  useSessionTimeout();
 
   // Generate consistent color based on string
   const getColorFromString = (str: string) => {

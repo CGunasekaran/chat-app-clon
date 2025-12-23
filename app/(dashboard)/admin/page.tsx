@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import AlertDialog from "@/components/ui/AlertDialog";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 
 interface User {
   id: string;
@@ -71,6 +72,9 @@ export default function AdminPage() {
     message: "",
     type: "error",
   });
+
+  // Enable session timeout - auto logout after 15 minutes of inactivity
+  useSessionTimeout();
 
   useEffect(() => {
     fetchUsers();

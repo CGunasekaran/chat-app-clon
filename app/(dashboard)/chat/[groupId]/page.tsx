@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
+import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import MessageList from "@/components/chat/MessageList";
 import MessageInput from "@/components/chat/MessageInput";
 import VoiceCall from "@/components/chat/VoiceCall";
@@ -94,6 +95,9 @@ export default function ChatPage() {
     message: "",
     type: "error",
   });
+
+  // Enable session timeout - auto logout after 15 minutes of inactivity
+  useSessionTimeout();
 
   // Handle escape key for modals
   useEffect(() => {
