@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 
-// Create transporter
+// Create transporter with timeout settings
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || "smtp.gmail.com",
   port: parseInt(process.env.EMAIL_PORT || "587"),
@@ -9,6 +9,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 export async function sendOTPEmail(email: string, otp: string) {
@@ -23,7 +26,7 @@ export async function sendOTPEmail(email: string, otp: string) {
     }
 
     const info = await transporter.sendMail({
-      from: `"Chat App" <${process.env.EMAIL_USER}>`,
+      from: `"Chat App" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
       to: email,
       subject: "Verify Your Email - Chat App",
       html: `
@@ -64,7 +67,9 @@ export async function sendOTPEmail(email: string, otp: string) {
       `,
     });
 
-    console.log(`✅ OTP email sent successfully to ${email} (MessageID: ${info.messageId})`);
+    console.log(
+      `✅ OTP email sent successfully to ${email} (MessageID: ${info.messageId})`
+    );
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error("❌ Error sending OTP email:", error);
@@ -95,7 +100,7 @@ export async function sendPasswordResetEmail(
     }
 
     const info = await transporter.sendMail({
-      from: `"Chat App" <${process.env.EMAIL_USER}>`,
+      from: `"Chat App" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
       to: email,
       subject: "Reset Your Password - Chat App",
       html: `
@@ -145,7 +150,9 @@ export async function sendPasswordResetEmail(
       `,
     });
 
-    console.log(`✅ Password reset email sent successfully to ${email} (MessageID: ${info.messageId})`);
+    console.log(
+      `✅ Password reset email sent successfully to ${email} (MessageID: ${info.messageId})`
+    );
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error("❌ Error sending password reset email:", error);
