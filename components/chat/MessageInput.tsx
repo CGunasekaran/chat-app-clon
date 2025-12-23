@@ -161,7 +161,7 @@ export default function MessageInput({
               />
             ) : (
               <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
-                <Paperclip className="w-8 h-8 text-gray-600" />
+                <FileText className="w-8 h-8 text-gray-600" />
               </div>
             )}
             <div className="flex-1 min-w-0">
