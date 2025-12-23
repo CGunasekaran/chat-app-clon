@@ -54,7 +54,7 @@ export default function MessageList({
               }`}
             >
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white font-semibold text-sm">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
                   {message.sender.avatar ? (
                     <Image
                       src={message.sender.avatar}
@@ -78,7 +78,7 @@ export default function MessageList({
                 <div
                   className={`rounded-lg p-3 ${
                     isOwn
-                      ? "bg-green-500 text-white"
+                      ? "bg-indigo-600 text-white"
                       : "bg-white text-gray-900 shadow"
                   }`}
                 >
