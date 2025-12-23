@@ -703,6 +703,23 @@ export default function ChatDashboard() {
         message={alertDialog.message}
         type={alertDialog.type}
       />
+
+      {/* Footer */}
+      <footer className="bg-white/80 backdrop-blur-sm border-t border-gray-200 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 py-3 text-center text-xs text-gray-500">
+          <p>
+            Developed by{" "}
+            <a
+              href="https://gunasekaran-portfolio.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+            >
+              Gunasekaran
+            </a>
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

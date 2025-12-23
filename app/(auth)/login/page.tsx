@@ -141,6 +141,23 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="absolute bottom-0 left-0 right-0 py-4">
+        <div className="text-center text-xs text-gray-500">
+          <p>
+            Developed by{" "}
+            <a
+              href="https://gunasekaran-portfolio.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+            >
+              Gunasekaran
+            </a>
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

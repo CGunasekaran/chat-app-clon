@@ -129,6 +129,17 @@ export default function Home() {
       <footer className="bg-white border-t border-gray-200 mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-gray-600">
           <p>&copy; 2025 Chat App. Built with Next.js and Socket.io</p>
+          <p className="mt-2 text-sm">
+            Developed by{" "}
+            <a
+              href="https://gunasekaran-portfolio.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-600 hover:text-indigo-700 font-medium transition-colors underline"
+            >
+              Gunasekaran
+            </a>
+          </p>
         </div>
       </footer>
     </div>
