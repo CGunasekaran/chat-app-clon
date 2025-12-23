@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 // GET reactions for a message
 export async function GET(
   request: Request,
-  { params }: { params: { messageId: string } }
+  { params }: { params: Promise<{ messageId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -14,9 +14,11 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { messageId } = await params;
+
     const reactions = await prisma.messageReaction.findMany({
       where: {
-        messageId: params.messageId,
+        messageId,
       },
       include: {
         user: {
@@ -44,13 +46,15 @@ export async function GET(
 // POST add or toggle reaction
 export async function POST(
   request: Request,
-  { params }: { params: { messageId: string } }
+  { params }: { params: Promise<{ messageId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { messageId } = await params;
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -63,17 +67,14 @@ export async function POST(
     const { emoji } = await request.json();
 
     if (!emoji) {
-      return NextResponse.json(
-        { error: "Emoji is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Emoji is required" }, { status: 400 });
     }
 
     // Check if user already reacted with this emoji
     const existingReaction = await prisma.messageReaction.findUnique({
       where: {
         messageId_userId_emoji: {
-          messageId: params.messageId,
+          messageId,
           userId: user.id,
           emoji,
         },
@@ -97,7 +98,7 @@ export async function POST(
       const reaction = await prisma.messageReaction.create({
         data: {
           emoji,
-          messageId: params.messageId,
+          messageId,
           userId: user.id,
         },
         include: {

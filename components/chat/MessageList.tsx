@@ -54,12 +54,38 @@ export default function MessageList({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
-  const emojis = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+  const emojis = [
+    "👍", "❤️", "😂", "😮", "😢", "🙏",
+    "🔥", "🎉", "👏", "💯", "✨", "💪",
+    "🤔", "😍", "🥳", "😎", "🤗", "👀",
+    "💖", "⭐"
+  ];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(null);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showEmojiPicker]);
 
   useEffect(() => {
     // Set up intersection observer for read receipts
@@ -295,7 +321,7 @@ export default function MessageList({
                   ))}
 
                   {/* Add Reaction Button */}
-                  <div className="relative">
+                  <div className="relative" ref={pickerRef}>
                     <button
                       onClick={() =>
                         setShowEmojiPicker(
@@ -310,18 +336,36 @@ export default function MessageList({
 
                     {/* Emoji Picker */}
                     {showEmojiPicker === message.id && (
-                      <div className="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg border border-gray-200 p-2 flex gap-1 z-20">
-                        {emojis.map((emoji) => (
+                      <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-50 min-w-[280px]">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-semibold text-gray-600">
+                            Add Reaction
+                          </p>
                           <button
-                            key={emoji}
-                            onClick={() =>
-                              handleReactionClick(message.id, emoji)
-                            }
-                            className="w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-100 rounded transition"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowEmojiPicker(null);
+                            }}
+                            className="text-gray-400 hover:text-gray-600 transition"
                           >
-                            {emoji}
+                            ✕
                           </button>
-                        ))}
+                        </div>
+                        <div className="grid grid-cols-6 gap-1 max-h-[180px] overflow-y-auto">
+                          {emojis.map((emoji) => (
+                            <button
+                              key={emoji}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReactionClick(message.id, emoji);
+                              }}
+                              className="w-10 h-10 flex items-center justify-center text-2xl hover:bg-gray-100 rounded-lg transition transform hover:scale-110"
+                              title={emoji}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
