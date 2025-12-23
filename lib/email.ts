@@ -64,9 +64,10 @@ export async function sendOTPEmail(email: string, otp: string) {
       `,
     });
 
+    console.log(`✅ OTP email sent successfully to ${email} (MessageID: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("❌ Error sending OTP email:", error);
     throw new Error("Failed to send verification email");
   }
 }
@@ -144,9 +145,10 @@ export async function sendPasswordResetEmail(
       `,
     });
 
+    console.log(`✅ Password reset email sent successfully to ${email} (MessageID: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error("Error sending password reset email:", error);
+    console.error("❌ Error sending password reset email:", error);
     throw new Error("Failed to send password reset email");
   }
 }
