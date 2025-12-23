@@ -706,6 +706,7 @@ export default function ChatPage() {
         onStopTyping={handleStopTyping}
         replyTo={replyTo}
         onCancelReply={handleCancelReply}
+        groupId={groupId}
       />
 
       {isVoiceCallActive && (

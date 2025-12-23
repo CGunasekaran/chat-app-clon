@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveMentions } from "@/lib/mentions";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -48,6 +49,16 @@ export async function GET(req: NextRequest) {
           },
         },
       },
+      mentions: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -60,8 +71,12 @@ export async function POST(req: NextRequest) {
   if (!session?.user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { groupId, content, type, fileUrl, fileName, fileType, replyToId } =
+  const { groupId, content, type, fileUrl, fileName, fileType, replyToId, isPriority } =
     await req.json();
+
+  // Resolve mentions in the content
+  const mentions = await resolveMentions(content || "", groupId);
+  const hasMentions = mentions.length > 0;
 
   const message = await prisma.message.create({
     data: {
@@ -73,6 +88,8 @@ export async function POST(req: NextRequest) {
       groupId,
       senderId: session.user.id,
       replyToId: replyToId || undefined,
+      isPriority: isPriority || false,
+      hasMentions,
     },
     include: {
       sender: { select: { id: true, name: true, avatar: true } },
@@ -109,7 +126,68 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json(message);
+  // Create mention records
+  if (mentions.length > 0) {
+    await prisma.mention.createMany({
+      data: mentions.map((mention) => ({
+        messageId: message.id,
+        userId: mention.userId,
+        startIndex: mention.startIndex,
+        length: mention.length,
+        isAll: mention.isAll,
+      })),
+    });
+  }
+
+  // Fetch message with mentions for response
+  const messageWithMentions = await prisma.message.findUnique({
+    where: { id: message.id },
+    include: {
+      sender: { select: { id: true, name: true, avatar: true } },
+      readBy: {
+        select: {
+          userId: true,
+          readAt: true,
+        },
+      },
+      reactions: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              avatar: true,
+            },
+          },
+        },
+      },
+      replyTo: {
+        select: {
+          id: true,
+          content: true,
+          type: true,
+          sender: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      mentions: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return NextResponse.json(messageWithMentions);
 }
 
 export async function PUT(req: NextRequest) {

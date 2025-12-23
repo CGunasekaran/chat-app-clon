@@ -10,6 +10,7 @@ import {
   FileText,
   Reply,
   Circle,
+  AtSign,
 } from "lucide-react";
 
 interface ReplyMessage {
@@ -19,6 +20,12 @@ interface ReplyMessage {
   sender: {
     name: string;
   };
+}
+
+interface MentionSuggestion {
+  id: string;
+  name: string;
+  avatar: string | null;
 }
 
 interface MessageInputProps {
@@ -36,6 +43,7 @@ interface MessageInputProps {
   onStopTyping: () => void;
   replyTo?: ReplyMessage | null;
   onCancelReply?: () => void;
+  groupId: string;
 }
 
 export default function MessageInput({
@@ -45,6 +53,7 @@ export default function MessageInput({
   onStopTyping,
   replyTo,
   onCancelReply,
+  groupId,
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -56,12 +65,48 @@ export default function MessageInput({
     url: string;
     type: string;
   } | null>(null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionSuggestions, setMentionSuggestions] = useState<
+    MentionSuggestion[]
+  >([]);
+  const [showMentions, setShowMentions] = useState(false);
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+  const [cursorPosition, setCursorPosition] = useState(0);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Detect @ mentions
+  useEffect(() => {
+    const fetchMentions = async () => {
+      if (mentionQuery !== null) {
+        try {
+          const response = await fetch(
+            `/api/mentions?groupId=${groupId}&query=${encodeURIComponent(
+              mentionQuery
+            )}`
+          );
+          if (response.ok) {
+            const suggestions = await response.json();
+            setMentionSuggestions(suggestions);
+            setShowMentions(suggestions.length > 0);
+          }
+        } catch (error) {
+          console.error("Error fetching mentions:", error);
+        }
+      } else {
+        setShowMentions(false);
+        setMentionSuggestions([]);
+      }
+    };
+
+    fetchMentions();
+  }, [mentionQuery, groupId]);
 
   // Close file menu when clicking outside
   useEffect(() => {
@@ -79,6 +124,27 @@ export default function MessageInput({
 
   const handleTyping = (value: string) => {
     setMessage(value);
+
+    // Get cursor position
+    const cursorPos = inputRef.current?.selectionStart || 0;
+    setCursorPosition(cursorPos);
+
+    // Detect @ mentions
+    const textBeforeCursor = value.slice(0, cursorPos);
+    const atIndex = textBeforeCursor.lastIndexOf("@");
+
+    if (atIndex !== -1) {
+      const textAfterAt = textBeforeCursor.slice(atIndex + 1);
+      // Check if there's no space after @
+      if (!textAfterAt.includes(" ")) {
+        setMentionQuery(textAfterAt);
+        setSelectedMentionIndex(0);
+      } else {
+        setMentionQuery(null);
+      }
+    } else {
+      setMentionQuery(null);
+    }
 
     // Start typing indicator
     if (value && !typingTimeoutRef.current) {
@@ -251,7 +317,58 @@ export default function MessageInput({
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const insertMention = (suggestion: MentionSuggestion) => {
+    const textBeforeCursor = message.slice(0, cursorPosition);
+    const textAfterCursor = message.slice(cursorPosition);
+    const atIndex = textBeforeCursor.lastIndexOf("@");
+
+    const newMessage =
+      textBeforeCursor.slice(0, atIndex) +
+      `@${suggestion.name} ` +
+      textAfterCursor;
+
+    setMessage(newMessage);
+    setMentionQuery(null);
+    setShowMentions(false);
+
+    // Set focus back to input
+    setTimeout(() => {
+      if (inputRef.current) {
+        const newCursorPos = atIndex + suggestion.name.length + 2;
+        inputRef.current.focus();
+        inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
+    // Handle mention selection with arrow keys
+    if (showMentions && mentionSuggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedMentionIndex((prev) =>
+          prev < mentionSuggestions.length - 1 ? prev + 1 : 0
+        );
+        return;
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedMentionIndex((prev) =>
+          prev > 0 ? prev - 1 : mentionSuggestions.length - 1
+        );
+        return;
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        insertMention(mentionSuggestions[selectedMentionIndex]);
+        return;
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setMentionQuery(null);
+        setShowMentions(false);
+        return;
+      }
+    }
+
+    // Normal Enter to send
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -348,13 +465,53 @@ export default function MessageInput({
 
           {/* Input field with upload icon */}
           <div className="flex-1 relative flex items-center border rounded-full focus-within:border-indigo-500">
+            {/* Mention suggestions dropdown */}
+            {showMentions && mentionSuggestions.length > 0 && (
+              <div className="absolute bottom-full left-0 mb-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 max-h-64 overflow-y-auto z-50">
+                {mentionSuggestions.map((suggestion, index) => (
+                  <button
+                    key={suggestion.id}
+                    onClick={() => insertMention(suggestion)}
+                    className={`w-full px-4 py-2 text-left hover:bg-indigo-50 flex items-center gap-3 ${
+                      index === selectedMentionIndex ? "bg-indigo-100" : ""
+                    }`}
+                  >
+                    {suggestion.avatar ? (
+                      <img
+                        src={suggestion.avatar}
+                        alt={suggestion.name}
+                        className="w-8 h-8 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-semibold">
+                        {suggestion.id === "all" ? (
+                          <AtSign className="w-4 h-4" />
+                        ) : (
+                          suggestion.name[0].toUpperCase()
+                        )}
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">
+                        {suggestion.id === "all" ? "@all" : `@${suggestion.name}`}
+                      </p>
+                      {suggestion.id === "all" && (
+                        <p className="text-xs text-gray-500">Notify everyone</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <input
+              ref={inputRef}
               type="text"
               value={message}
               onChange={(e) => handleTyping(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               disabled={isUploading}
-              placeholder="Type a message..."
+              placeholder="Type a message... (use @ to mention)"
               className="flex-1 px-4 py-2 rounded-full focus:outline-none text-gray-900 disabled:bg-gray-100"
             />
 
