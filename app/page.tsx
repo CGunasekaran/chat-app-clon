@@ -24,24 +24,24 @@ export default function Home() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <MessageCircle className="w-8 h-8 text-green-600" />
+            <MessageCircle className="w-8 h-8 text-indigo-600" />
             <h1 className="text-2xl font-bold text-gray-900">Chat App</h1>
           </div>
           <div className="flex gap-4">
             <Link
               href="/login"
-              className="px-4 py-2 text-green-600 hover:text-green-700 font-medium transition"
+              className="px-4 py-2 text-indigo-600 hover:text-indigo-700 font-medium transition"
             >
               Login
             </Link>
             <Link
               href="/register"
-              className="px-6 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition font-medium"
+              className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full hover:from-indigo-700 hover:to-purple-700 transition font-medium shadow-lg shadow-indigo-500/50"
             >
               Sign Up
             </Link>
@@ -61,7 +61,7 @@ export default function Home() {
           </p>
           <Link
             href="/register"
-            className="inline-block px-8 py-4 bg-green-600 text-white text-lg rounded-full hover:bg-green-700 transition font-semibold shadow-lg"
+            className="inline-block px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-lg rounded-full hover:from-indigo-700 hover:to-purple-700 transition font-semibold shadow-xl shadow-indigo-500/50"
           >
             Get Started
           </Link>
@@ -70,8 +70,8 @@ export default function Home() {
         {/* Features */}
         <div className="grid md:grid-cols-3 gap-8 mt-20">
           <div className="bg-white p-8 rounded-2xl shadow-md text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-              <Users className="w-8 h-8 text-green-600" />
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full mb-4">
+              <Users className="w-8 h-8 text-indigo-600" />
             </div>
             <h3 className="text-xl font-semibold mb-3 text-gray-900">
               Group Chats
@@ -83,7 +83,7 @@ export default function Home() {
           </div>
 
           <div className="bg-white p-8 rounded-2xl shadow-md text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full mb-4">
               <Phone className="w-8 h-8 text-blue-600" />
             </div>
             <h3 className="text-xl font-semibold mb-3 text-gray-900">
@@ -96,7 +96,7 @@ export default function Home() {
           </div>
 
           <div className="bg-white p-8 rounded-2xl shadow-md text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full mb-4">
               <Shield className="w-8 h-8 text-purple-600" />
             </div>
             <h3 className="text-xl font-semibold mb-3 text-gray-900">
@@ -110,7 +110,7 @@ export default function Home() {
         </div>
 
         {/* CTA Section */}
-        <div className="mt-20 bg-green-600 rounded-3xl p-12 text-center text-white">
+        <div className="mt-20 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-12 text-center text-white shadow-2xl">
           <h3 className="text-3xl font-bold mb-4">Ready to start chatting?</h3>
           <p className="text-lg mb-8 opacity-90">
             Join thousands of users already using Chat App for their daily
@@ -118,7 +118,7 @@ export default function Home() {
           </p>
           <Link
             href="/register"
-            className="inline-block px-8 py-4 bg-white text-green-600 text-lg rounded-full hover:bg-gray-100 transition font-semibold"
+            className="inline-block px-8 py-4 bg-white text-indigo-600 text-lg rounded-full hover:bg-gray-50 transition font-semibold shadow-lg"
           >
             Create Your Account
           </Link>

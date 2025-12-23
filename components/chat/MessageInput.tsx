@@ -1,29 +1,32 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Send, Mic } from 'lucide-react'
+import { useState } from "react";
+import { Send, Mic } from "lucide-react";
 
 interface MessageInputProps {
-  onSendMessage: (content: string) => void
-  onStartVoiceCall: () => void
+  onSendMessage: (content: string) => void;
+  onStartVoiceCall: () => void;
 }
 
-export default function MessageInput({ onSendMessage, onStartVoiceCall }: MessageInputProps) {
-  const [message, setMessage] = useState('')
+export default function MessageInput({
+  onSendMessage,
+  onStartVoiceCall,
+}: MessageInputProps) {
+  const [message, setMessage] = useState("");
 
   const handleSend = () => {
     if (message.trim()) {
-      onSendMessage(message)
-      setMessage('')
+      onSendMessage(message);
+      setMessage("");
     }
-  }
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
-  }
+  };
 
   return (
     <div className="border-t bg-white p-4">
@@ -34,9 +37,9 @@ export default function MessageInput({ onSendMessage, onStartVoiceCall }: Messag
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Type a message..."
-          className="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:border-green-500"
+          className="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:border-indigo-500 text-gray-900"
         />
-        
+
         <button
           onClick={onStartVoiceCall}
           className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition"
@@ -44,15 +47,15 @@ export default function MessageInput({ onSendMessage, onStartVoiceCall }: Messag
         >
           <Mic className="w-5 h-5 text-gray-600" />
         </button>
-        
+
         <button
           onClick={handleSend}
           disabled={!message.trim()}
-          className="p-2 rounded-full bg-green-500 hover:bg-green-600 disabled:bg-gray-300 transition"
+          className="p-2 rounded-full bg-indigo-600 hover:bg-gradient-to-r from-indigo-600 to-purple-600 disabled:bg-gray-300 transition"
         >
           <Send className="w-5 h-5 text-white" />
         </button>
       </div>
     </div>
-  )
+  );
 }

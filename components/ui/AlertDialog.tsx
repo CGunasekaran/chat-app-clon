@@ -40,7 +40,7 @@ export default function AlertDialog({
     },
     success: {
       icon: CheckCircle,
-      iconColor: "text-green-600",
+      iconColor: "text-indigo-600",
       bgColor: "bg-green-50",
       buttonColor: "bg-green-600 hover:bg-green-700",
     },

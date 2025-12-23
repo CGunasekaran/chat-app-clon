@@ -296,11 +296,11 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      <div className="bg-green-600 text-white p-4 shadow-md">
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 shadow-md">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push("/chat")}
-            className="p-2 hover:bg-green-700 rounded-full transition-colors"
+            className="p-2 hover:from-indigo-700 hover:to-purple-700 rounded-full transition-colors"
             title="Back to chats"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -323,7 +323,7 @@ export default function ChatPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowMembers(true)}
-              className="p-2 hover:bg-green-700 rounded-full transition-colors"
+              className="p-2 hover:from-indigo-700 hover:to-purple-700 rounded-full transition-colors"
               title="View members"
             >
               <Users className="w-5 h-5" />
@@ -383,7 +383,7 @@ export default function ChatPage() {
                     key={member.user.id}
                     className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
                   >
-                    <div className="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center font-semibold">
+                    <div className="w-10 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full flex items-center justify-center font-semibold">
                       {member.user.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1">

@@ -177,7 +177,7 @@ export default function ChatDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
@@ -187,7 +187,7 @@ export default function ChatDashboard() {
       {/* Sidebar */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
         {/* Header */}
-        <div className="p-4 bg-green-600 text-white">
+        <div className="p-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-6 h-6" />
@@ -195,7 +195,7 @@ export default function ChatDashboard() {
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 hover:bg-green-700 rounded-full transition"
+              className="p-2 hover:from-indigo-700 hover:to-purple-700 rounded-full transition"
               title="Logout"
             >
               <LogOut className="w-5 h-5" />
@@ -210,7 +210,7 @@ export default function ChatDashboard() {
             </div>
             <button
               onClick={() => setShowUserProfile(true)}
-              className="p-2 hover:bg-green-700 rounded-full transition"
+              className="p-2 hover:from-indigo-700 hover:to-purple-700 rounded-full transition"
               title="View Profile"
             >
               <ChevronDown className="w-4 h-4" />
@@ -225,7 +225,7 @@ export default function ChatDashboard() {
               <h2 className="text-lg font-semibold text-gray-900">Groups</h2>
               <button
                 onClick={() => setShowCreateGroup(true)}
-                className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition"
+                className="p-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full hover:from-indigo-700 hover:to-purple-700 transition"
                 title="Create Group"
               >
                 <Plus className="w-5 h-5" />
@@ -247,8 +247,8 @@ export default function ChatDashboard() {
                     className="block p-3 rounded-lg hover:bg-gray-100 transition"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Users className="w-6 h-6 text-green-600" />
+                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Users className="w-6 h-6 text-indigo-600" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-gray-900 truncate">
@@ -272,8 +272,8 @@ export default function ChatDashboard() {
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <MessageCircle className="w-12 h-12 text-green-600" />
+          <div className="w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MessageCircle className="w-12 h-12 text-indigo-600" />
           </div>
           <h2 className="text-2xl font-semibold text-gray-900 mb-2">
             Welcome to Chat App
@@ -308,7 +308,7 @@ export default function ChatDashboard() {
                     value={newGroupName}
                     onChange={(e) => setNewGroupName(e.target.value)}
                     required
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder:text-gray-500"
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder:text-gray-500"
                     placeholder="Enter group name"
                   />
                 </div>
@@ -320,7 +320,7 @@ export default function ChatDashboard() {
                     value={newGroupDescription}
                     onChange={(e) => setNewGroupDescription(e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder:text-gray-500"
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder:text-gray-500"
                     placeholder="Enter group description"
                   />
                 </div>
@@ -339,7 +339,7 @@ export default function ChatDashboard() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition"
                 >
                   Create
                 </button>
@@ -370,7 +370,7 @@ export default function ChatDashboard() {
             </div>
             <div className="p-6">
               <div className="flex flex-col items-center">
-                <div className="w-24 h-24 bg-green-600 text-white rounded-full flex items-center justify-center mb-4">
+                <div className="w-24 h-24 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full flex items-center justify-center mb-4">
                   <User className="w-12 h-12" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
