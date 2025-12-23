@@ -25,11 +25,8 @@ app.prepare().then(() => {
   });
 
   io.on("connection", (socket) => {
-    console.log("User connected:", socket.id);
-
     socket.on("join-group", (groupId) => {
       socket.join(groupId);
-      console.log(`User ${socket.id} joined group ${groupId}`);
     });
 
     socket.on("send-message", (data) => {
@@ -70,12 +67,8 @@ app.prepare().then(() => {
       });
     });
 
-    socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
-    });
+    socket.on("disconnect", () => {});
   });
 
-  httpServer.listen(port, () => {
-    console.log(`> Ready on http://${hostname}:${port}`);
-  });
+  httpServer.listen(port, () => {});
 });

@@ -12,12 +12,10 @@ export const useSocket = () => {
 
     socketInstance.on("connect", () => {
       setIsConnected(true);
-      console.log("Connected to socket server");
     });
 
     socketInstance.on("disconnect", () => {
       setIsConnected(false);
-      console.log("Disconnected from socket server");
     });
 
     // Set socket after event listeners are registered

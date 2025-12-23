@@ -16,12 +16,8 @@ const transporter = nodemailer.createTransport({
 
 export async function sendOTPEmail(email: string, otp: string) {
   try {
-    // Always log the OTP (for dev and production without email)
-    console.log(`\n🔐 OTP for ${email}: ${otp}\n`);
-
     // Skip actual email sending if credentials not configured
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-      console.log("⚠️  Email credentials not configured. OTP logged above.");
       return { success: true, message: "OTP logged (no email configured)" };
     }
 
@@ -67,12 +63,8 @@ export async function sendOTPEmail(email: string, otp: string) {
       `,
     });
 
-    console.log(
-      `✅ OTP email sent successfully to ${email} (MessageID: ${info.messageId})`
-    );
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error("❌ Error sending OTP email:", error);
     throw new Error("Failed to send verification email");
   }
 }
@@ -84,15 +76,8 @@ export async function sendPasswordResetEmail(
   try {
     const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
 
-    // Always log the reset link
-    console.log(`\n🔑 Password Reset for ${email}`);
-    console.log(`Reset Link: ${resetUrl}\n`);
-
     // Skip actual email sending if credentials not configured
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-      console.log(
-        "⚠️  Email credentials not configured. Reset link logged above."
-      );
       return {
         success: true,
         message: "Reset link logged (no email configured)",
@@ -150,12 +135,8 @@ export async function sendPasswordResetEmail(
       `,
     });
 
-    console.log(
-      `✅ Password reset email sent successfully to ${email} (MessageID: ${info.messageId})`
-    );
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error("❌ Error sending password reset email:", error);
     throw new Error("Failed to send password reset email");
   }
 }
