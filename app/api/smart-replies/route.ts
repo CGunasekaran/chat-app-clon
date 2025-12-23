@@ -196,7 +196,11 @@ function generateSmartReplies(
     },
     {
       pattern: /congrat|awesome|amazing|great job|well done|nice/i,
-      replies: ["Thank you so much! 🎉", "Thanks! Really appreciate it", "😊 ❤️"],
+      replies: [
+        "Thank you so much! 🎉",
+        "Thanks! Really appreciate it",
+        "😊 ❤️",
+      ],
     },
     {
       pattern: /help|issue|problem/i,

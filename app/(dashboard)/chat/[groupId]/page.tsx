@@ -6,13 +6,15 @@ import { useSocket } from "@/hooks/useSocket";
 import MessageList from "@/components/chat/MessageList";
 import MessageInput from "@/components/chat/MessageInput";
 import VoiceCall from "@/components/chat/VoiceCall";
+import VideoCall from "@/components/chat/VideoCall";
+import IncomingCall from "@/components/chat/IncomingCall";
 import AlertDialog from "@/components/ui/AlertDialog";
-import { ArrowLeft, Users, Trash2, X, Search } from "lucide-react";
+import { ArrowLeft, Users, Trash2, X, Search, Video } from "lucide-react";
 
 interface Message {
   id: string;
   content: string;
-  type?: string;
+  type: string;
   fileUrl?: string;
   fileName?: string;
   fileType?: string;
@@ -51,6 +53,7 @@ interface Group {
   name: string;
   description?: string;
   adminId: string;
+  isOneToOne?: boolean;
   members: Member[];
 }
 
@@ -64,6 +67,13 @@ export default function ChatPage() {
   const [currentUserId, setCurrentUserId] = useState("");
   const [currentUserName, setCurrentUserName] = useState("");
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
+  const [isVideoCallActive, setIsVideoCallActive] = useState(false);
+  const [incomingCall, setIncomingCall] = useState<{
+    from: string;
+    fromName: string;
+    callType: "video" | "audio";
+    callId: string;
+  } | null>(null);
   const [group, setGroup] = useState<Group | null>(null);
   const [showMembers, setShowMembers] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -210,9 +220,11 @@ export default function ChatPage() {
   }, [groupId, router]);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !currentUserId) return;
 
     socket.emit("join-group", groupId);
+    // Join user-specific room for direct calls
+    socket.emit("join-user-room", currentUserId);
 
     socket.on("receive-message", (message: Message) => {
       setMessages((prev) => [...prev, message]);
@@ -220,6 +232,46 @@ export default function ChatPage() {
 
     socket.on("incoming-voice-call", () => {
       setIsVoiceCallActive(true);
+    });
+
+    socket.on(
+      "incoming-call",
+      ({
+        from,
+        fromName,
+        callType,
+        callId,
+      }: {
+        from: string;
+        fromName: string;
+        callType: "video" | "audio";
+        callId: string;
+      }) => {
+        if (from !== currentUserId) {
+          setIncomingCall({ from, fromName, callType, callId });
+        }
+      }
+    );
+
+    socket.on("call-accepted", ({ by }: { by: string }) => {
+      if (by !== currentUserId) {
+        // Start the call for the initiator
+        setIsVideoCallActive(true);
+      }
+    });
+
+    socket.on("call-rejected", ({ by }: { by: string }) => {
+      if (by !== currentUserId) {
+        setAlertDialog({
+          isOpen: true,
+          message: "Call was declined",
+          type: "info",
+          onClose: () =>
+            setAlertDialog({ isOpen: false, message: "", type: "info" }),
+        });
+        setIsVideoCallActive(false);
+        setIsVoiceCallActive(false);
+      }
     });
 
     socket.on(
@@ -328,6 +380,9 @@ export default function ChatPage() {
     return () => {
       socket.off("receive-message");
       socket.off("incoming-voice-call");
+      socket.off("incoming-call");
+      socket.off("call-accepted");
+      socket.off("call-rejected");
       socket.off("user-typing");
       socket.off("user-stopped-typing");
       socket.off("messages-read");
@@ -335,6 +390,69 @@ export default function ChatPage() {
       socket.off("reaction-removed");
     };
   }, [socket, groupId, currentUserId]);
+
+  const handleInitiateCall = (callType: "video" | "audio") => {
+    if (!socket || !group) return;
+
+    const callId = `call-${Date.now()}`;
+
+    // Get other members in the group/chat
+    const otherMembers = group.members.filter(
+      (m) => m.user.id !== currentUserId
+    );
+
+    // Emit incoming call to other members
+    otherMembers.forEach((member) => {
+      socket.emit("initiate-call", {
+        to: member.user.id,
+        from: currentUserId,
+        fromName: currentUserName,
+        callType,
+        callId,
+        groupId,
+      });
+    });
+
+    // Show call UI for initiator
+    if (callType === "video") {
+      setIsVideoCallActive(true);
+    } else {
+      setIsVoiceCallActive(true);
+    }
+  };
+
+  const handleAcceptCall = () => {
+    if (!incomingCall || !socket) return;
+
+    // Notify the caller that call was accepted
+    socket.emit("accept-call", {
+      callId: incomingCall.callId,
+      groupId,
+      acceptedBy: currentUserId,
+    });
+
+    // Start the call
+    if (incomingCall.callType === "video") {
+      setIsVideoCallActive(true);
+    } else {
+      setIsVoiceCallActive(true);
+    }
+
+    setIncomingCall(null);
+  };
+
+  const handleRejectCall = () => {
+    if (!incomingCall || !socket) return;
+
+    // Notify the caller that call was rejected
+    socket.emit("reject-call", {
+      callId: incomingCall.callId,
+      groupId,
+      rejectedBy: currentUserId,
+    });
+
+    setIncomingCall(null);
+  };
 
   const handleSendMessage = async (
     content: string,
@@ -612,20 +730,29 @@ export default function ChatPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => handleInitiateCall("video")}
+              className="p-2 hover:from-indigo-700 hover:to-purple-700 rounded-full transition-colors"
+              title="Start video call"
+            >
+              <Video className="w-5 h-5" />
+            </button>
+            <button
               onClick={() => setShowSearch(!showSearch)}
               className="p-2 hover:from-indigo-700 hover:to-purple-700 rounded-full transition-colors"
               title="Search messages"
             >
               <Search className="w-5 h-5" />
             </button>
-            <button
-              onClick={() => setShowMembers(true)}
-              className="p-2 hover:from-indigo-700 hover:to-purple-700 rounded-full transition-colors"
-              title="View members"
-            >
-              <Users className="w-5 h-5" />
-            </button>
-            {isAdmin && (
+            {!group?.isOneToOne && (
+              <button
+                onClick={() => setShowMembers(true)}
+                className="p-2 hover:from-indigo-700 hover:to-purple-700 rounded-full transition-colors"
+                title="View members"
+              >
+                <Users className="w-5 h-5" />
+              </button>
+            )}
+            {isAdmin && !group?.isOneToOne && (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="p-2 hover:bg-red-600 rounded-full transition-colors"
@@ -716,6 +843,27 @@ export default function ChatPage() {
         />
       )}
 
+      {isVideoCallActive && group && (
+        <VideoCall
+          socket={socket}
+          groupId={groupId}
+          userId={currentUserId}
+          userName={currentUserName}
+          isGroupCall={group.members.length > 2}
+          onClose={() => setIsVideoCallActive(false)}
+        />
+      )}
+
+      {/* Incoming Call */}
+      {incomingCall && (
+        <IncomingCall
+          callerName={incomingCall.fromName}
+          callType={incomingCall.callType}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
+        />
+      )}
+
       {/* Members Modal */}
       {showMembers && group && (
         <div
@@ -728,7 +876,9 @@ export default function ChatPage() {
           >
             <div className="flex items-center justify-between p-6 border-b">
               <h2 className="text-xl font-bold text-gray-900">
-                Group Members ({group.members.length})
+                {group.isOneToOne
+                  ? "Chat Info"
+                  : `Group Members (${group.members.length})`}
               </h2>
               <button
                 onClick={() => setShowMembers(false)}

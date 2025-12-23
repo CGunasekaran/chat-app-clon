@@ -24,6 +24,8 @@ model User {
   reactions           MessageReaction[]
   mentions            Mention[]
   notificationPrefs   NotificationPreferences[]
+  initiatedCalls      Call[]                    @relation("CallInitiator")
+  callParticipants    CallParticipant[]
 }
 
 model Group {
@@ -41,6 +43,7 @@ model Group {
   members               GroupMember[]
   messages              Message[]
   notificationPrefs     NotificationPreferences[]
+  calls                 Call[]
 }
 
 model GroupMember {
@@ -54,6 +57,50 @@ model GroupMember {
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   
   @@unique([userId, groupId])
+  @@index([userId])
+  @@index([groupId])
+}
+
+model Call {
+  id                String            @id @default(cuid())
+  type              String            // video, audio
+  status            String            @default("initiated") // initiated, ringing, active, ended, missed, rejected
+  startedAt         DateTime          @default(now())
+  endedAt           DateTime?
+  duration          Int?              // duration in seconds
+  isGroupCall       Boolean           @default(false)
+  recordingUrl      String?
+  quality           String?           // excellent, good, fair, poor
+  
+  initiatorId       String
+  initiator         User              @relation("CallInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  
+  groupId           String?
+  group             Group?            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  participants      CallParticipant[]
+  
+  @@index([initiatorId])
+  @@index([groupId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model CallParticipant {
+  id            String    @id @default(cuid())
+  joinedAt      DateTime  @default(now())
+  leftAt        DateTime?
+  status        String    @default("invited") // invited, joined, left, rejected
+  
+  callId        String
+  call          Call      @relation(fields: [callId], references: [id], onDelete: Cascade)
+  
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([callId, userId])
+  @@index([callId])
+  @@index([userId])
 }
 
 model Message {

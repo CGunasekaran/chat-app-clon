@@ -41,7 +41,7 @@ interface Mention {
 interface Message {
   id: string;
   content: string;
-  type?: string;
+  type: string;
   fileUrl?: string;
   fileName?: string;
   fileType?: string;
@@ -299,7 +299,7 @@ export default function MessageList({
       return <p className="text-sm break-words">{message.content}</p>;
     }
 
-    const parts: JSX.Element[] = [];
+    const parts: React.ReactElement[] = [];
     let lastIndex = 0;
 
     // Sort mentions by start index
@@ -479,7 +479,9 @@ export default function MessageList({
                         </div>
                       </div>
                       <audio
-                        ref={(el) => (audioRefs.current[message.id] = el)}
+                        ref={(el) => {
+                          if (el) audioRefs.current[message.id] = el;
+                        }}
                         src={message.fileUrl}
                         preload="metadata"
                       />
@@ -592,7 +594,9 @@ export default function MessageList({
                   {/* Add Reaction Button */}
                   <div className="relative flex-shrink-0">
                     <button
-                      ref={(el) => (buttonRefs.current[message.id] = el)}
+                      ref={(el) => {
+                        if (el) buttonRefs.current[message.id] = el;
+                      }}
                       onClick={() => handleEmojiPickerToggle(message.id, isOwn)}
                       className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 transition text-gray-600"
                       title="Add reaction"

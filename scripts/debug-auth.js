@@ -13,7 +13,7 @@ const prisma = new PrismaClient({ adapter });
 
 async function debugAuth() {
   const email = "gunagm2311@gmaill.com";
-  const password = "admin123";
+  const password = "admin12345";
 
   console.log("=".repeat(50));
   console.log("AUTH DEBUG TEST");

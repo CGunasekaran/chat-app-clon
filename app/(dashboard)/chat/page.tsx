@@ -25,6 +25,23 @@ interface Group {
   avatar?: string;
   updatedAt: Date;
   isOneToOne?: boolean;
+  messages?: Array<{
+    id: string;
+    content: string;
+    type?: string;
+    createdAt: Date;
+    sender: {
+      id: string;
+      name: string;
+    };
+  }>;
+  members: Array<{
+    user: {
+      id: string;
+      name: string;
+      avatar?: string;
+    };
+  }>;
 }
 
 interface SearchUser {
@@ -390,9 +407,22 @@ export default function ChatDashboard() {
                         <h3 className="font-medium text-gray-900 truncate">
                           {group.name}
                         </h3>
-                        {group.description && (
+                        {group.messages && group.messages.length > 0 ? (
+                          <p className="text-sm text-gray-500 truncate">
+                            {group.messages[0].sender.name}:{" "}
+                            {group.messages[0].type === "voice"
+                              ? "🎤 Voice message"
+                              : group.messages[0].type === "file"
+                              ? "📎 File"
+                              : group.messages[0].content}
+                          </p>
+                        ) : group.description ? (
                           <p className="text-sm text-gray-500 truncate">
                             {group.description}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-400 italic truncate">
+                            No messages yet
                           </p>
                         )}
                       </div>

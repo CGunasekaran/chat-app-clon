@@ -28,6 +28,24 @@ export async function GET() {
           },
         },
       },
+      messages: {
+        take: 1,
+        orderBy: {
+          createdAt: "desc",
+        },
+        select: {
+          id: true,
+          content: true,
+          type: true,
+          createdAt: true,
+          sender: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
     },
     orderBy: {
       updatedAt: "desc",
