@@ -291,7 +291,11 @@ export default function MessageList({
 
   // Render message content with highlighted mentions
   const renderMessageContent = (message: Message) => {
-    if (!message.hasMentions || !message.mentions || message.mentions.length === 0) {
+    if (
+      !message.hasMentions ||
+      !message.mentions ||
+      message.mentions.length === 0
+    ) {
       return <p className="text-sm break-words">{message.content}</p>;
     }
 
@@ -324,9 +328,7 @@ export default function MessageList({
         <span
           key={`mention-${idx}`}
           className={`font-semibold rounded px-1 ${
-            isMentioned
-              ? "bg-indigo-100 text-indigo-700"
-              : "text-indigo-600"
+            isMentioned ? "bg-indigo-100 text-indigo-700" : "text-indigo-600"
           }`}
           title={mention.isAll ? "Everyone" : mention.user?.name || "User"}
         >
@@ -552,9 +554,7 @@ export default function MessageList({
 
                   {/* Text Message */}
                   {!isImage && !isFile && (
-                    <div className="p-3">
-                      {renderMessageContent(message)}
-                    </div>
+                    <div className="p-3">{renderMessageContent(message)}</div>
                   )}
                 </div>
 

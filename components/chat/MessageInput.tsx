@@ -72,7 +72,10 @@ export default function MessageInput({
   const [showMentions, setShowMentions] = useState(false);
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
   const [cursorPosition, setCursorPosition] = useState(0);
-  
+  const [smartReplies, setSmartReplies] = useState<string[]>([]);
+  const [showSmartReplies, setShowSmartReplies] = useState(false);
+  const [loadingSmartReplies, setLoadingSmartReplies] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +83,7 @@ export default function MessageInput({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const smartReplyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Detect @ mentions
   useEffect(() => {
@@ -341,6 +345,60 @@ export default function MessageInput({
     }, 0);
   };
 
+  // Fetch smart reply suggestions
+  const fetchSmartReplies = async () => {
+    if (loadingSmartReplies) return;
+
+    setLoadingSmartReplies(true);
+    try {
+      const response = await fetch("/api/smart-replies", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ groupId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSmartReplies(data.suggestions || []);
+        setShowSmartReplies(data.suggestions.length > 0);
+      }
+    } catch (error) {
+      console.error("Error fetching smart replies:", error);
+    } finally {
+      setLoadingSmartReplies(false);
+    }
+  };
+
+  // Load smart replies when input is focused and empty
+  useEffect(() => {
+    if (smartReplyTimeoutRef.current) {
+      clearTimeout(smartReplyTimeoutRef.current);
+    }
+
+    if (!message && !isRecording) {
+      // Delay to avoid too many requests
+      smartReplyTimeoutRef.current = setTimeout(() => {
+        fetchSmartReplies();
+      }, 500);
+    } else {
+      setShowSmartReplies(false);
+    }
+
+    return () => {
+      if (smartReplyTimeoutRef.current) {
+        clearTimeout(smartReplyTimeoutRef.current);
+      }
+    };
+  }, [message, isRecording, groupId]);
+
+  const handleSmartReplyClick = (reply: string) => {
+    setMessage(reply);
+    setShowSmartReplies(false);
+    inputRef.current?.focus();
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     // Handle mention selection with arrow keys
     if (showMentions && mentionSuggestions.length > 0) {
@@ -446,6 +504,21 @@ export default function MessageInput({
 
       {/* Input */}
       <div className="p-4">
+        {/* Smart Reply Suggestions */}
+        {showSmartReplies && smartReplies.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {smartReplies.map((reply, index) => (
+              <button
+                key={index}
+                onClick={() => handleSmartReplyClick(reply)}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm rounded-full hover:from-indigo-600 hover:to-purple-600 transition-all shadow-sm hover:shadow-md transform hover:scale-105"
+              >
+                {reply}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex gap-2 items-center">
           {/* Hidden file inputs */}
           <input
@@ -493,7 +566,9 @@ export default function MessageInput({
                     )}
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">
-                        {suggestion.id === "all" ? "@all" : `@${suggestion.name}`}
+                        {suggestion.id === "all"
+                          ? "@all"
+                          : `@${suggestion.name}`}
                       </p>
                       {suggestion.id === "all" && (
                         <p className="text-xs text-gray-500">Notify everyone</p>

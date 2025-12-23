@@ -1,8 +1,8 @@
 export const notificationSounds = {
-  default: '/notification-default.mp3', // These would need to be added to public folder
-  pop: '/notification-pop.mp3',
-  chime: '/notification-chime.mp3',
-  bell: '/notification-bell.mp3',
+  default: "/notification-default.mp3", // These would need to be added to public folder
+  pop: "/notification-pop.mp3",
+  chime: "/notification-chime.mp3",
+  bell: "/notification-bell.mp3",
   none: null,
 };
 
@@ -60,7 +60,8 @@ export class NotificationManager {
   async playSound(soundName: string) {
     if (soundName === "none") return;
 
-    const soundUrl = notificationSounds[soundName as keyof typeof notificationSounds];
+    const soundUrl =
+      notificationSounds[soundName as keyof typeof notificationSounds];
     if (!soundUrl) return;
 
     try {
@@ -124,7 +125,7 @@ export class NotificationManager {
 
     // Show bundled notification after 2 seconds
     this.bundleTimeout = setTimeout(() => {
-      type PendingNotification = typeof this.pendingNotifications[0];
+      type PendingNotification = (typeof this.pendingNotifications)[0];
       const groupedByGroupId = this.pendingNotifications.reduce(
         (acc, notif) => {
           if (!acc[notif.groupId]) {
@@ -140,9 +141,7 @@ export class NotificationManager {
         const count = notifications.length;
         const title = notifications[0].title;
         const body =
-          count === 1
-            ? notifications[0].body
-            : `${count} new messages`;
+          count === 1 ? notifications[0].body : `${count} new messages`;
 
         this.showBrowserNotification(title, body, false);
       });

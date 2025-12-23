@@ -71,8 +71,16 @@ export async function POST(req: NextRequest) {
   if (!session?.user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { groupId, content, type, fileUrl, fileName, fileType, replyToId, isPriority } =
-    await req.json();
+  const {
+    groupId,
+    content,
+    type,
+    fileUrl,
+    fileName,
+    fileType,
+    replyToId,
+    isPriority,
+  } = await req.json();
 
   // Resolve mentions in the content
   const mentions = await resolveMentions(content || "", groupId);
@@ -202,6 +210,23 @@ export async function PUT(req: NextRequest) {
     if (!messageId) {
       console.error("Missing messageId in request body:", body);
       return NextResponse.json({ error: "Missing messageId" }, { status: 400 });
+    }
+
+    // Verify user exists in database
+    const userExists = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true },
+    });
+
+    if (!userExists) {
+      console.error(
+        "User from session not found in database:",
+        session.user.id
+      );
+      return NextResponse.json(
+        { error: "User not found in database" },
+        { status: 404 }
+      );
     }
 
     // Mark message as read by current user
