@@ -12,12 +12,20 @@ import { ArrowLeft, Users, Trash2, X } from "lucide-react";
 interface Message {
   id: string;
   content: string;
+  type?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileType?: string;
   createdAt: Date;
   sender: {
     id: string;
     name: string;
     avatar?: string;
   };
+  readBy?: Array<{
+    userId: string;
+    readAt: Date;
+  }>;
 }
 
 interface Member {
@@ -44,10 +52,14 @@ export default function ChatPage() {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentUserId, setCurrentUserId] = useState("");
+  const [currentUserName, setCurrentUserName] = useState("");
   const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
   const [group, setGroup] = useState<Group | null>(null);
   const [showMembers, setShowMembers] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<{ [userId: string]: string }>(
+    {}
+  );
   const [alertDialog, setAlertDialog] = useState<{
     isOpen: boolean;
     message: string;
@@ -167,6 +179,7 @@ export default function ChatPage() {
           return;
         }
         setCurrentUserId(data.user.id);
+        setCurrentUserName(data.user.name || "User");
       })
       .catch((error) => {
         setAlertDialog({
@@ -194,18 +207,75 @@ export default function ChatPage() {
       setIsVoiceCallActive(true);
     });
 
+    socket.on(
+      "user-typing",
+      ({ userId, userName }: { userId: string; userName: string }) => {
+        if (userId !== currentUserId) {
+          setTypingUsers((prev) => ({ ...prev, [userId]: userName }));
+        }
+      }
+    );
+
+    socket.on("user-stopped-typing", ({ userId }: { userId: string }) => {
+      setTypingUsers((prev) => {
+        const updated = { ...prev };
+        delete updated[userId];
+        return updated;
+      });
+    });
+
+    socket.on(
+      "messages-read",
+      ({ userId, messageIds }: { userId: string; messageIds: string[] }) => {
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (messageIds.includes(msg.id)) {
+              const existingReadBy = msg.readBy || [];
+              const alreadyRead = existingReadBy.some(
+                (r) => r.userId === userId
+              );
+              if (!alreadyRead) {
+                return {
+                  ...msg,
+                  readBy: [...existingReadBy, { userId, readAt: new Date() }],
+                };
+              }
+            }
+            return msg;
+          })
+        );
+      }
+    );
+
     return () => {
       socket.off("receive-message");
       socket.off("incoming-voice-call");
+      socket.off("user-typing");
+      socket.off("user-stopped-typing");
+      socket.off("messages-read");
     };
-  }, [socket, groupId]);
+  }, [socket, groupId, currentUserId]);
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (
+    content: string,
+    file?: { fileUrl: string; fileName: string; fileType: string }
+  ) => {
     try {
+      const messageData = file
+        ? {
+            groupId,
+            content: content || "",
+            type: file.fileType.startsWith("image/") ? "image" : "file",
+            fileUrl: file.fileUrl,
+            fileName: file.fileName,
+            fileType: file.fileType,
+          }
+        : { groupId, content };
+
       const response = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groupId, content }),
+        body: JSON.stringify(messageData),
       });
 
       if (response.status === 401) {
@@ -244,6 +314,38 @@ export default function ChatPage() {
         onClose: () =>
           setAlertDialog({ isOpen: false, message: "", type: "error" }),
       });
+    }
+  };
+
+  const handleTyping = () => {
+    socket?.emit("typing-start", {
+      groupId,
+      userId: currentUserId,
+      userName: currentUserName,
+    });
+  };
+
+  const handleStopTyping = () => {
+    socket?.emit("typing-stop", { groupId, userId: currentUserId });
+  };
+
+  const handleMessageVisible = async (messageId: string) => {
+    if (!messageId) return;
+
+    try {
+      await fetch("/api/messages", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }),
+      });
+
+      socket?.emit("mark-messages-read", {
+        groupId,
+        messageIds: [messageId],
+        userId: currentUserId,
+      });
+    } catch (error) {
+      console.error("Failed to mark messages as read:", error);
     }
   };
 
@@ -341,11 +443,30 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <MessageList messages={messages} currentUserId={currentUserId} />
+      <div className="flex-1 overflow-y-auto">
+        <MessageList
+          messages={messages}
+          currentUserId={currentUserId}
+          groupMembers={group?.members}
+          onMessageVisible={handleMessageVisible}
+        />
+        {Object.keys(typingUsers).length > 0 && (
+          <div className="px-6 py-2 text-sm text-gray-500 italic">
+            {Object.values(typingUsers)[0]} typing
+            <span className="typing-dots">
+              <span className="dot">.</span>
+              <span className="dot">.</span>
+              <span className="dot">.</span>
+            </span>
+          </div>
+        )}
+      </div>
 
       <MessageInput
         onSendMessage={handleSendMessage}
         onStartVoiceCall={handleStartVoiceCall}
+        onTyping={handleTyping}
+        onStopTyping={handleStopTyping}
       />
 
       {isVoiceCallActive && (
