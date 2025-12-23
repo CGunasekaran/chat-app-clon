@@ -392,12 +392,6 @@ export default function ChatPage() {
 
       // Clear reply after sending
       setReplyTo(null);
-      }
-
-      socket?.emit("send-message", {
-        groupId,
-        ...newMessage,
-      });
     } catch (error) {
       setAlertDialog({
         isOpen: true,

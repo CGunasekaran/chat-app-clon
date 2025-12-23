@@ -3,7 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { format } from "date-fns";
-import { Check, CheckCheck, Download, FileText, Smile, Reply, Mic, Play, Pause } from "lucide-react";
+import {
+  Check,
+  CheckCheck,
+  Download,
+  FileText,
+  Smile,
+  Reply,
+  Mic,
+  Play,
+  Pause,
+} from "lucide-react";
 
 interface Reaction {
   id: string;

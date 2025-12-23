@@ -1,17 +1,17 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
 async function main() {
   try {
-    console.log('Adding replyToId column to Message table...');
-    
+    console.log("Adding replyToId column to Message table...");
+
     // Add replyToId column
     await prisma.$executeRaw`
       ALTER TABLE "Message" 
       ADD COLUMN IF NOT EXISTS "replyToId" TEXT;
     `;
-    
+
     // Add foreign key constraint
     await prisma.$executeRaw`
       DO $$ 
@@ -29,10 +29,10 @@ async function main() {
         END IF;
       END $$;
     `;
-    
-    console.log('✅ Successfully added reply functionality to Message table');
+
+    console.log("✅ Successfully added reply functionality to Message table");
   } catch (error) {
-    console.error('Error adding reply functionality:', error);
+    console.error("Error adding reply functionality:", error);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
