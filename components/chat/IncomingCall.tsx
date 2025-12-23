@@ -1,0 +1,143 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { Phone, Video, PhoneOff } from "lucide-react";
+
+interface IncomingCallProps {
+  callerName: string;
+  callType: "video" | "audio";
+  onAccept: () => void;
+  onReject: () => void;
+}
+
+export default function IncomingCall({
+  callerName,
+  callType,
+  onAccept,
+  onReject,
+}: IncomingCallProps) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Play ringtone when component mounts
+    audioRef.current = new Audio("/notification.mp3");
+    audioRef.current.loop = true;
+    audioRef.current.volume = 0.5;
+
+    const playPromise = audioRef.current.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((error) => {
+        console.log("Ringtone autoplay prevented:", error);
+      });
+    }
+
+    // Stop ringtone on unmount
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleAccept = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    onAccept();
+  };
+
+  const handleReject = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    onReject();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100]">
+      <div className="bg-white rounded-3xl p-8 w-full max-w-sm mx-4 text-center animate-bounce-slow">
+        {/* Caller Avatar */}
+        <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+          <span className="text-white font-bold text-3xl">
+            {callerName.charAt(0).toUpperCase()}
+          </span>
+        </div>
+
+        {/* Caller Name */}
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">{callerName}</h2>
+
+        {/* Call Type */}
+        <p className="text-gray-600 mb-8 flex items-center justify-center gap-2">
+          {callType === "video" ? (
+            <>
+              <Video className="w-5 h-5" />
+              Incoming Video Call
+            </>
+          ) : (
+            <>
+              <Phone className="w-5 h-5" />
+              Incoming Voice Call
+            </>
+          )}
+        </p>
+
+        {/* Action Buttons */}
+        <div className="flex gap-4 justify-center">
+          {/* Reject Button */}
+          <button
+            onClick={handleReject}
+            className="w-16 h-16 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-all transform hover:scale-110 active:scale-95 shadow-lg"
+            title="Decline"
+          >
+            <PhoneOff className="w-7 h-7 text-white" />
+          </button>
+
+          {/* Accept Button */}
+          <button
+            onClick={handleAccept}
+            className="w-16 h-16 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center transition-all transform hover:scale-110 active:scale-95 shadow-lg animate-pulse"
+            title="Accept"
+          >
+            {callType === "video" ? (
+              <Video className="w-7 h-7 text-white" />
+            ) : (
+              <Phone className="w-7 h-7 text-white" />
+            )}
+          </button>
+        </div>
+
+        {/* Ringing Animation */}
+        <div className="mt-6 flex justify-center gap-1">
+          <div
+            className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"
+            style={{ animationDelay: "0ms" }}
+          ></div>
+          <div
+            className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"
+            style={{ animationDelay: "150ms" }}
+          ></div>
+          <div
+            className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"
+            style={{ animationDelay: "300ms" }}
+          ></div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes bounce-slow {
+          0%,
+          100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.02);
+          }
+        }
+        .animate-bounce-slow {
+          animation: bounce-slow 2s ease-in-out infinite;
+        }
+      `}</style>
+    </div>
+  );
+}

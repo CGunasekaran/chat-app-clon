@@ -19,6 +19,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Verify current user exists in database
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    });
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: "Current user not found in database" },
+        { status: 404 }
+      );
+    }
+
     // Check if one-to-one chat already exists
     const existingChat = await prisma.group.findFirst({
       where: {

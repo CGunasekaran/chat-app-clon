@@ -14,7 +14,7 @@ const prisma = new PrismaClient({ adapter });
 
 async function testLogin() {
   const email = process.argv[2] || "gunagm2311@gmaill.com";
-  const password = process.argv[3] || "admin123";
+  const password = process.argv[3] || "admin12345";
 
   try {
     const user = await prisma.user.findUnique({

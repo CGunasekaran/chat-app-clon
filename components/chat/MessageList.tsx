@@ -26,14 +26,28 @@ interface Reaction {
   };
 }
 
+interface Mention {
+  id: string;
+  startIndex: number;
+  length: number;
+  isAll: boolean;
+  userId: string | null;
+  user: {
+    id: string;
+    name: string;
+  } | null;
+}
+
 interface Message {
   id: string;
   content: string;
-  type?: string;
+  type: string;
   fileUrl?: string;
   fileName?: string;
   fileType?: string;
   createdAt: Date;
+  isPriority?: boolean;
+  hasMentions?: boolean;
   sender: {
     id: string;
     name: string;
@@ -44,6 +58,7 @@ interface Message {
     readAt: Date;
   }>;
   reactions?: Reaction[];
+  mentions?: Mention[];
   replyTo?: {
     id: string;
     content: string;
@@ -274,6 +289,66 @@ export default function MessageList({
     }));
   };
 
+  // Render message content with highlighted mentions
+  const renderMessageContent = (message: Message) => {
+    if (
+      !message.hasMentions ||
+      !message.mentions ||
+      message.mentions.length === 0
+    ) {
+      return <p className="text-sm break-words">{message.content}</p>;
+    }
+
+    const parts: React.ReactElement[] = [];
+    let lastIndex = 0;
+
+    // Sort mentions by start index
+    const sortedMentions = [...message.mentions].sort(
+      (a, b) => a.startIndex - b.startIndex
+    );
+
+    sortedMentions.forEach((mention, idx) => {
+      // Add text before mention
+      if (mention.startIndex > lastIndex) {
+        parts.push(
+          <span key={`text-${idx}`}>
+            {message.content.slice(lastIndex, mention.startIndex)}
+          </span>
+        );
+      }
+
+      // Add highlighted mention
+      const mentionText = message.content.slice(
+        mention.startIndex,
+        mention.startIndex + mention.length
+      );
+      const isMentioned = mention.userId === currentUserId || mention.isAll;
+
+      parts.push(
+        <span
+          key={`mention-${idx}`}
+          className={`font-semibold rounded px-1 ${
+            isMentioned ? "bg-indigo-100 text-indigo-700" : "text-indigo-600"
+          }`}
+          title={mention.isAll ? "Everyone" : mention.user?.name || "User"}
+        >
+          {mentionText}
+        </span>
+      );
+
+      lastIndex = mention.startIndex + mention.length;
+    });
+
+    // Add remaining text
+    if (lastIndex < message.content.length) {
+      parts.push(
+        <span key="text-end">{message.content.slice(lastIndex)}</span>
+      );
+    }
+
+    return <p className="text-sm break-words">{parts}</p>;
+  };
+
   if (!Array.isArray(messages)) {
     return (
       <div className="flex-1 overflow-y-auto p-4">
@@ -404,7 +479,9 @@ export default function MessageList({
                         </div>
                       </div>
                       <audio
-                        ref={(el) => (audioRefs.current[message.id] = el)}
+                        ref={(el) => {
+                          if (el) audioRefs.current[message.id] = el;
+                        }}
                         src={message.fileUrl}
                         preload="metadata"
                       />
@@ -424,9 +501,7 @@ export default function MessageList({
                       />
                       {message.content && (
                         <div className="p-3">
-                          <p className="text-sm break-words">
-                            {message.content}
-                          </p>
+                          {renderMessageContent(message)}
                         </div>
                       )}
                     </div>
@@ -472,18 +547,16 @@ export default function MessageList({
                         />
                       </a>
                       {message.content && (
-                        <p className="text-sm break-words mt-2">
-                          {message.content}
-                        </p>
+                        <div className="mt-2">
+                          {renderMessageContent(message)}
+                        </div>
                       )}
                     </div>
                   )}
 
                   {/* Text Message */}
                   {!isImage && !isFile && (
-                    <div className="p-3">
-                      <p className="text-sm break-words">{message.content}</p>
-                    </div>
+                    <div className="p-3">{renderMessageContent(message)}</div>
                   )}
                 </div>
 
@@ -521,7 +594,9 @@ export default function MessageList({
                   {/* Add Reaction Button */}
                   <div className="relative flex-shrink-0">
                     <button
-                      ref={(el) => (buttonRefs.current[message.id] = el)}
+                      ref={(el) => {
+                        if (el) buttonRefs.current[message.id] = el;
+                      }}
                       onClick={() => handleEmojiPickerToggle(message.id, isOwn)}
                       className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 transition text-gray-600"
                       title="Add reaction"

@@ -17,11 +17,15 @@ model User {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   
-  messages      Message[]
-  groups        GroupMember[]
-  createdGroups Group[]           @relation("GroupAdmin")
-  readMessages  MessageRead[]
-  reactions     MessageReaction[]
+  messages            Message[]
+  groups              GroupMember[]
+  createdGroups       Group[]                   @relation("GroupAdmin")
+  readMessages        MessageRead[]
+  reactions           MessageReaction[]
+  mentions            Mention[]
+  notificationPrefs   NotificationPreferences[]
+  initiatedCalls      Call[]                    @relation("CallInitiator")
+  callParticipants    CallParticipant[]
 }
 
 model Group {
@@ -36,8 +40,10 @@ model Group {
   adminId     String
   admin       User          @relation("GroupAdmin", fields: [adminId], references: [id])
   
-  members     GroupMember[]
-  messages    Message[]
+  members               GroupMember[]
+  messages              Message[]
+  notificationPrefs     NotificationPreferences[]
+  calls                 Call[]
 }
 
 model GroupMember {
@@ -51,16 +57,62 @@ model GroupMember {
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   
   @@unique([userId, groupId])
+  @@index([userId])
+  @@index([groupId])
+}
+
+model Call {
+  id                String            @id @default(cuid())
+  type              String            // video, audio
+  status            String            @default("initiated") // initiated, ringing, active, ended, missed, rejected
+  startedAt         DateTime          @default(now())
+  endedAt           DateTime?
+  duration          Int?              // duration in seconds
+  isGroupCall       Boolean           @default(false)
+  recordingUrl      String?
+  quality           String?           // excellent, good, fair, poor
+  
+  initiatorId       String
+  initiator         User              @relation("CallInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  
+  groupId           String?
+  group             Group?            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  participants      CallParticipant[]
+  
+  @@index([initiatorId])
+  @@index([groupId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model CallParticipant {
+  id            String    @id @default(cuid())
+  joinedAt      DateTime  @default(now())
+  leftAt        DateTime?
+  status        String    @default("invited") // invited, joined, left, rejected
+  
+  callId        String
+  call          Call      @relation(fields: [callId], references: [id], onDelete: Cascade)
+  
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([callId, userId])
+  @@index([callId])
+  @@index([userId])
 }
 
 model Message {
-  id        String            @id @default(cuid())
-  content   String
-  type      String            @default("text") // text, voice, image, file
-  fileUrl   String?
-  fileName  String?
-  fileType  String?
-  createdAt DateTime          @default(now())
+  id          String            @id @default(cuid())
+  content     String
+  type        String            @default("text") // text, voice, image, file
+  fileUrl     String?
+  fileName    String?
+  fileType    String?
+  createdAt   DateTime          @default(now())
+  isPriority  Boolean           @default(false)
+  hasMentions Boolean           @default(false)
   
   senderId  String
   sender    User              @relation(fields: [senderId], references: [id])
@@ -74,6 +126,7 @@ model Message {
   
   readBy    MessageRead[]
   reactions MessageReaction[]
+  mentions  Mention[]
 }
 
 model MessageRead {
@@ -125,4 +178,43 @@ model MessageReaction {
   
   @@unique([messageId, userId, emoji])
   @@index([messageId])
+}
+
+model Mention {
+  id         String   @id @default(cuid())
+  startIndex Int
+  length     Int
+  isAll      Boolean  @default(false) // true for @all mentions
+  createdAt  DateTime @default(now())
+  
+  messageId  String
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  userId     String?  // null for @all
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([messageId])
+  @@index([userId])
+}
+
+model NotificationPreferences {
+  id                String    @id @default(cuid())
+  sound             String    @default("default") // default, pop, chime, bell, none
+  showPreview       Boolean   @default(true)
+  isPriority        Boolean   @default(false)
+  muteUntil         DateTime?
+  onlyMentions      Boolean   @default(false)
+  bundleMessages    Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  groupId           String
+  group             Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, groupId])
+  @@index([userId])
+  @@index([groupId])
 }

@@ -205,7 +205,6 @@ This creates:
 - `user1@test.com`
 - `user2@test.com`
 
-All with password: `password123`
 
 ### Database Migrations
 
