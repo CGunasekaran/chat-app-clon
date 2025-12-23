@@ -5,10 +5,10 @@ export async function GET() {
   try {
     // Test database connection
     await prisma.$connect();
-    
+
     // Try to query the database
     const userCount = await prisma.user.count();
-    
+
     return NextResponse.json({
       status: "success",
       message: "Database connection successful",
