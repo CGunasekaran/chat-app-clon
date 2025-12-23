@@ -12,6 +12,8 @@ import {
   ChevronDown,
   X,
   Shield,
+  Search,
+  UserPlus,
 } from "lucide-react";
 import Link from "next/link";
 import AlertDialog from "@/components/ui/AlertDialog";
@@ -22,6 +24,14 @@ interface Group {
   description?: string;
   avatar?: string;
   updatedAt: Date;
+  isOneToOne?: boolean;
+}
+
+interface SearchUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
 }
 
 export default function ChatDashboard() {
@@ -37,6 +47,10 @@ export default function ChatDashboard() {
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [alertDialog, setAlertDialog] = useState<{
     isOpen: boolean;
     message: string;
@@ -48,18 +62,78 @@ export default function ChatDashboard() {
     type: "error",
   });
 
+  // Generate consistent color based on string
+  const getColorFromString = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colors = [
+      "from-blue-400 to-blue-600",
+      "from-green-400 to-green-600",
+      "from-purple-400 to-purple-600",
+      "from-pink-400 to-pink-600",
+      "from-indigo-400 to-indigo-600",
+      "from-red-400 to-red-600",
+      "from-yellow-400 to-yellow-600",
+      "from-teal-400 to-teal-600",
+      "from-orange-400 to-orange-600",
+      "from-cyan-400 to-cyan-600",
+    ];
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Get first letter of name
+  const getInitial = (name: string) => {
+    return name.charAt(0).toUpperCase();
+  };
+
   // Handle escape key for modals
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (showCreateGroup) setShowCreateGroup(false);
         if (showUserProfile) setShowUserProfile(false);
+        if (showUserSearch) setShowUserSearch(false);
       }
     };
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [showCreateGroup, showUserProfile]);
+  }, [showCreateGroup, showUserProfile, showUserSearch]);
+
+  // Search users
+  useEffect(() => {
+    if (!showUserSearch) {
+      setUserSearchQuery("");
+      setSearchResults([]);
+      return;
+    }
+
+    if (userSearchQuery.trim() === "") {
+      setSearchResults([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await fetch(
+          `/api/users?search=${encodeURIComponent(userSearchQuery)}`
+        );
+        if (response.ok) {
+          const users = await response.json();
+          setSearchResults(users);
+        }
+      } catch (error) {
+        console.error("Error searching users:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300); // Debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [userSearchQuery, showUserSearch]);
 
   useEffect(() => {
     // Check authentication
@@ -169,6 +243,42 @@ export default function ChatDashboard() {
     }
   };
 
+  const handleStartChat = async (otherUserId: string) => {
+    try {
+      const response = await fetch("/api/chats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otherUserId }),
+      });
+
+      if (response.status === 401) {
+        router.push("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to start chat");
+      }
+
+      const chat = await response.json();
+      setShowUserSearch(false);
+      setUserSearchQuery("");
+      setSearchResults([]);
+      router.push(`/chat/${chat.id}`);
+    } catch (error) {
+      setAlertDialog({
+        isOpen: true,
+        message: `Unable to start chat. ${
+          error instanceof Error ? error.message : "Please try again."
+        }`,
+        type: "error",
+        onClose: () =>
+          setAlertDialog({ isOpen: false, message: "", type: "error" }),
+      });
+    }
+  };
+
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.push("/login");
@@ -222,21 +332,30 @@ export default function ChatDashboard() {
         <div className="flex-1 overflow-y-auto">
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Groups</h2>
-              <button
-                onClick={() => setShowCreateGroup(true)}
-                className="p-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full hover:from-indigo-700 hover:to-purple-700 transition"
-                title="Create Group"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+              <h2 className="text-lg font-semibold text-gray-900">Chats</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowUserSearch(true)}
+                  className="p-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full hover:from-green-700 hover:to-emerald-700 transition"
+                  title="New Chat"
+                >
+                  <UserPlus className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setShowCreateGroup(true)}
+                  className="p-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full hover:from-indigo-700 hover:to-purple-700 transition"
+                  title="Create Group"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {groups.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No groups yet</p>
-                <p className="text-sm mt-1">Create a group to start chatting</p>
+                <p>No chats yet</p>
+                <p className="text-sm mt-1">Start a chat or create a group</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -247,8 +366,25 @@ export default function ChatDashboard() {
                     className="block p-3 rounded-lg hover:bg-gray-100 transition"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Users className="w-6 h-6 text-indigo-600" />
+                      <div
+                        className={`w-12 h-12 bg-gradient-to-br ${getColorFromString(
+                          group.name
+                        )} rounded-full flex items-center justify-center flex-shrink-0 relative`}
+                      >
+                        {group.isOneToOne ? (
+                          <>
+                            <span className="text-white font-bold text-lg">
+                              {getInitial(group.name)}
+                            </span>
+                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-md">
+                              <User className="w-3 h-3 text-gray-600" />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <Users className="w-6 h-6 text-white" />
+                          </>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-gray-900 truncate">
@@ -345,6 +481,96 @@ export default function ChatDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* User Search Modal */}
+      {showUserSearch && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setShowUserSearch(false)}
+        >
+          <div
+            className="bg-white rounded-lg p-6 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">New Chat</h3>
+              <button
+                onClick={() => setShowUserSearch(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  placeholder="Search users by name or email..."
+                  className="w-full pl-10 pr-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder:text-gray-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              {isSearching ? (
+                <div className="text-center py-8 text-gray-500">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                </div>
+              ) : searchResults.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  {userSearchQuery.trim() === "" ? (
+                    <>
+                      <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>Type to search users</p>
+                    </>
+                  ) : (
+                    <>
+                      <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>No users found</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {searchResults.map((searchUser) => (
+                    <button
+                      key={searchUser.id}
+                      onClick={() => handleStartChat(searchUser.id)}
+                      className="w-full p-3 rounded-lg hover:bg-gray-100 transition text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-10 h-10 bg-gradient-to-br ${getColorFromString(
+                            searchUser.name
+                          )} rounded-full flex items-center justify-center flex-shrink-0 relative`}
+                        >
+                          <span className="text-white font-bold text-sm">
+                            {getInitial(searchUser.name)}
+                          </span>
+                          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-md">
+                            <User className="w-2.5 h-2.5 text-gray-600" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate">
+                            {searchUser.name}
+                          </p>
+                          <p className="text-sm text-gray-500 truncate">
+                            {searchUser.email}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
