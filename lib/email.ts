@@ -87,7 +87,10 @@ export async function sendPasswordResetEmail(
       console.log(
         "⚠️  Email credentials not configured. Reset link logged above."
       );
-      return { success: true, message: "Reset link logged (no email configured)" };
+      return {
+        success: true,
+        message: "Reset link logged (no email configured)",
+      };
     }
 
     const info = await transporter.sendMail({

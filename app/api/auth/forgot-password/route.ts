@@ -51,9 +51,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Send reset email
-    await sendPasswordResetEmail(email, resetToken);
+    // Send reset email asynchronously (don't await - fire and forget)
+    sendPasswordResetEmail(email, resetToken).catch((emailError) => {
+      console.error("Password reset email failed:", emailError);
+    });
 
+    // Return immediately - don't wait for email
     return NextResponse.json(
       {
         success: true,
