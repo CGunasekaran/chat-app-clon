@@ -8,7 +8,7 @@ const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
 const port = 3000;
 
-const app = next({ dev, hostname, port });
+const app = next({ dev, hostname, port, turbo: false });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
@@ -34,6 +34,29 @@ app.prepare().then(() => {
 
     socket.on("send-message", (data) => {
       io.to(data.groupId).emit("receive-message", data);
+    });
+
+    socket.on("typing-start", (data) => {
+      socket.to(data.groupId).emit("user-typing", {
+        userId: data.userId,
+        userName: data.userName,
+        groupId: data.groupId,
+      });
+    });
+
+    socket.on("typing-stop", (data) => {
+      socket.to(data.groupId).emit("user-stopped-typing", {
+        userId: data.userId,
+        groupId: data.groupId,
+      });
+    });
+
+    socket.on("mark-messages-read", (data) => {
+      io.to(data.groupId).emit("messages-read", {
+        userId: data.userId,
+        messageIds: data.messageIds,
+        groupId: data.groupId,
+      });
     });
 
     socket.on("start-voice-call", (data) => {
