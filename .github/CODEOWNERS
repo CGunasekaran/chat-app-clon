@@ -1,0 +1,5 @@
+# This file defines code owners for this repository
+# Only the specified users can approve pull requests
+
+# Global owner - all files
+* @CGunasekaran

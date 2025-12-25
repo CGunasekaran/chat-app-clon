@@ -83,7 +83,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { groupId, type, participantIds, isGroupCall } = await req.json();
+    const { callId, groupId, type, participantIds, isGroupCall } =
+      await req.json();
 
     if (!type || !participantIds || participantIds.length === 0) {
       return NextResponse.json(
@@ -95,6 +96,7 @@ export async function POST(req: NextRequest) {
     // Create call
     const call = await prisma.call.create({
       data: {
+        id: callId || undefined, // Use provided callId or let Prisma generate one
         type,
         isGroupCall: isGroupCall || false,
         status: "initiated",

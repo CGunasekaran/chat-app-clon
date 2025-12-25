@@ -14,6 +14,7 @@ import {
   Shield,
   Search,
   UserPlus,
+  Phone,
 } from "lucide-react";
 import Link from "next/link";
 import AlertDialog from "@/components/ui/AlertDialog";
@@ -355,6 +356,13 @@ export default function ChatDashboard() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Chats</h2>
               <div className="flex gap-2">
+                <Link
+                  href="/calls"
+                  className="p-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full hover:from-blue-700 hover:to-cyan-700 transition"
+                  title="Call History"
+                >
+                  <Phone className="w-5 h-5" />
+                </Link>
                 <button
                   onClick={() => setShowUserSearch(true)}
                   className="p-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full hover:from-green-700 hover:to-emerald-700 transition"

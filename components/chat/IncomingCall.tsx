@@ -17,9 +17,12 @@ export default function IncomingCall({
   onReject,
 }: IncomingCallProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const oscillatorRef = useRef<OscillatorNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
 
   useEffect(() => {
-    // Play ringtone when component mounts
+    // Try to play notification sound file first
     audioRef.current = new Audio("/notification.mp3");
     audioRef.current.loop = true;
     audioRef.current.volume = 0.5;
@@ -27,7 +30,48 @@ export default function IncomingCall({
     const playPromise = audioRef.current.play();
     if (playPromise !== undefined) {
       playPromise.catch((error) => {
-        console.log("Ringtone autoplay prevented:", error);
+        console.log(
+          "Notification.mp3 not found, using generated ringtone:",
+          error
+        );
+
+        // Fallback to Web Audio API generated ringtone
+        try {
+          const AudioContext =
+            window.AudioContext || (window as any).webkitAudioContext;
+          audioContextRef.current = new AudioContext();
+          const context = audioContextRef.current;
+
+          // Create oscillator for ringtone
+          oscillatorRef.current = context.createOscillator();
+          gainNodeRef.current = context.createGain();
+
+          oscillatorRef.current.connect(gainNodeRef.current);
+          gainNodeRef.current.connect(context.destination);
+
+          // Set ringtone frequency (pleasant tone)
+          oscillatorRef.current.frequency.value = 800;
+          oscillatorRef.current.type = "sine";
+          gainNodeRef.current.gain.value = 0.3;
+
+          // Create pulsing effect
+          const pulseInterval = setInterval(() => {
+            if (gainNodeRef.current) {
+              gainNodeRef.current.gain.setValueAtTime(0.3, context.currentTime);
+              gainNodeRef.current.gain.exponentialRampToValueAtTime(
+                0.01,
+                context.currentTime + 0.3
+              );
+            }
+          }, 1000);
+
+          oscillatorRef.current.start();
+
+          // Store interval for cleanup
+          (oscillatorRef.current as any).pulseInterval = pulseInterval;
+        } catch (err) {
+          console.error("Failed to create audio context:", err);
+        }
       });
     }
 
@@ -35,7 +79,34 @@ export default function IncomingCall({
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.src = "";
+        audioRef.current.load();
         audioRef.current = null;
+      }
+      if (oscillatorRef.current) {
+        try {
+          clearInterval((oscillatorRef.current as any).pulseInterval);
+          oscillatorRef.current.stop();
+          oscillatorRef.current.disconnect();
+        } catch (err) {
+          // Oscillator may already be stopped
+        }
+        oscillatorRef.current = null;
+      }
+      if (gainNodeRef.current) {
+        try {
+          gainNodeRef.current.disconnect();
+        } catch (err) {
+          // May already be disconnected
+        }
+        gainNodeRef.current = null;
+      }
+      if (audioContextRef.current) {
+        if (audioContextRef.current.state !== "closed") {
+          audioContextRef.current.close();
+        }
+        audioContextRef.current = null;
       }
     };
   }, []);
@@ -43,6 +114,30 @@ export default function IncomingCall({
   const handleAccept = () => {
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = "";
+      audioRef.current.load();
+    }
+    if (oscillatorRef.current) {
+      try {
+        clearInterval((oscillatorRef.current as any).pulseInterval);
+        oscillatorRef.current.stop();
+        oscillatorRef.current.disconnect();
+      } catch (err) {
+        // Oscillator may already be stopped
+      }
+    }
+    if (gainNodeRef.current) {
+      try {
+        gainNodeRef.current.disconnect();
+      } catch (err) {
+        // May already be disconnected
+      }
+    }
+    if (audioContextRef.current) {
+      if (audioContextRef.current.state !== "closed") {
+        audioContextRef.current.close();
+      }
     }
     onAccept();
   };
@@ -50,6 +145,30 @@ export default function IncomingCall({
   const handleReject = () => {
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = "";
+      audioRef.current.load();
+    }
+    if (oscillatorRef.current) {
+      try {
+        clearInterval((oscillatorRef.current as any).pulseInterval);
+        oscillatorRef.current.stop();
+        oscillatorRef.current.disconnect();
+      } catch (err) {
+        // Oscillator may already be stopped
+      }
+    }
+    if (gainNodeRef.current) {
+      try {
+        gainNodeRef.current.disconnect();
+      } catch (err) {
+        // May already be disconnected
+      }
+    }
+    if (audioContextRef.current) {
+      if (audioContextRef.current.state !== "closed") {
+        audioContextRef.current.close();
+      }
     }
     onReject();
   };

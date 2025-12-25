@@ -90,6 +90,14 @@ app.prepare().then(() => {
       });
     });
 
+    socket.on("end-voice-call", (data) => {
+      io.to(data.to).emit("voice-call-ended");
+    });
+
+    socket.on("cancel-call", (data) => {
+      io.to(data.to).emit("call-cancelled");
+    });
+
     // Call initiation and response
     socket.on("initiate-call", (data) => {
       // Send incoming call notification directly to the recipient's room
