@@ -137,8 +137,9 @@ export default function VideoCall({
 
         // Notify others about joining
         if (socket) {
+          console.log("📹 Joining call room:", groupId, "as user:", userId);
           socket.emit("call:join", {
-            groupId,
+            callId: groupId,
             userId,
             userName,
             isGroupCall,
@@ -169,7 +170,7 @@ export default function VideoCall({
 
     // Handle new participant joining
     socket.on("call:user-joined", async ({ userId: newUserId, userName }) => {
-      console.log("User joined:", newUserId);
+      console.log("📹 User joined call:", newUserId, userName);
 
       // Create peer connection for new user
       const peerConnection = new RTCPeerConnection(configuration);
@@ -184,13 +185,20 @@ export default function VideoCall({
 
       // Handle incoming stream
       peerConnection.ontrack = (event) => {
+        console.log(
+          "🎥 Received remote track from:",
+          newUserId,
+          event.streams[0]
+        );
         setParticipants((prev) => {
           const existing = prev.find((p) => p.id === newUserId);
           if (existing) {
+            console.log("🔄 Updating existing participant:", newUserId);
             return prev.map((p) =>
               p.id === newUserId ? { ...p, stream: event.streams[0] } : p
             );
           }
+          console.log("➕ Adding new participant:", newUserId);
           return [
             ...prev,
             {
@@ -208,8 +216,10 @@ export default function VideoCall({
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
           socket.emit("call:ice-candidate", {
+            callId: groupId,
             to: newUserId,
             candidate: event.candidate,
+            from: userId,
           });
         }
       };
@@ -225,7 +235,13 @@ export default function VideoCall({
       // Create and send offer
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
-      socket.emit("call:offer", { to: newUserId, offer });
+      console.log("📤 Sending offer to:", newUserId);
+      socket.emit("call:offer", {
+        callId: groupId,
+        to: newUserId,
+        offer,
+        from: userId,
+      });
     });
 
     // Handle receiving offer
@@ -238,6 +254,7 @@ export default function VideoCall({
         from: string;
         offer: RTCSessionDescriptionInit;
       }) => {
+        console.log("📥 Received offer from:", from);
         const peerConnection = new RTCPeerConnection(configuration);
         peerConnectionsRef.current[from] = peerConnection;
 
@@ -248,18 +265,21 @@ export default function VideoCall({
         }
 
         peerConnection.ontrack = (event) => {
+          console.log("🎥 Received remote track from:", from, event.streams[0]);
           setParticipants((prev) => {
             const existing = prev.find((p) => p.id === from);
             if (existing) {
+              console.log("🔄 Updating existing participant:", from);
               return prev.map((p) =>
                 p.id === from ? { ...p, stream: event.streams[0] } : p
               );
             }
+            console.log("➕ Adding new participant:", from);
             return [
               ...prev,
               {
                 id: from,
-                name: "Participant",
+                name: from ? `User ${from.slice(0, 6)}` : "Participant",
                 stream: event.streams[0],
                 videoEnabled: true,
                 audioEnabled: true,
@@ -271,8 +291,10 @@ export default function VideoCall({
         peerConnection.onicecandidate = (event) => {
           if (event.candidate) {
             socket.emit("call:ice-candidate", {
+              callId: groupId,
               to: from,
               candidate: event.candidate,
+              from: userId,
             });
           }
         };
@@ -286,7 +308,13 @@ export default function VideoCall({
         );
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-        socket.emit("call:answer", { to: from, answer });
+        console.log("📤 Sending answer to:", from);
+        socket.emit("call:answer", {
+          callId: groupId,
+          to: from,
+          answer,
+          from: userId,
+        });
       }
     );
 
@@ -300,11 +328,15 @@ export default function VideoCall({
         from: string;
         answer: RTCSessionDescriptionInit;
       }) => {
+        console.log("📥 Received answer from:", from);
         const peerConnection = peerConnectionsRef.current[from];
         if (peerConnection) {
           await peerConnection.setRemoteDescription(
             new RTCSessionDescription(answer)
           );
+          console.log("✅ Set remote description for:", from);
+        } else {
+          console.error("❌ No peer connection found for:", from);
         }
       }
     );
@@ -373,7 +405,7 @@ export default function VideoCall({
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoEnabled(videoTrack.enabled);
         socket?.emit("call:toggle-video", {
-          groupId,
+          callId: groupId,
           userId,
           enabled: videoTrack.enabled,
         });
@@ -388,7 +420,7 @@ export default function VideoCall({
         audioTrack.enabled = !audioTrack.enabled;
         setIsAudioEnabled(audioTrack.enabled);
         socket?.emit("call:toggle-audio", {
-          groupId,
+          callId: groupId,
           userId,
           enabled: audioTrack.enabled,
         });
@@ -550,7 +582,7 @@ export default function VideoCall({
     Object.values(peerConnectionsRef.current).forEach((pc) => pc.close());
 
     // Notify others
-    socket?.emit("call:leave", { groupId, userId });
+    socket?.emit("call:leave", { callId: groupId, userId });
 
     onClose();
   };
@@ -651,37 +683,39 @@ export default function VideoCall({
           </div>
 
           {/* Participant Videos */}
-          {participants.map((participant) => (
-            <div
-              key={participant.id}
-              className="relative bg-gray-800 rounded-lg overflow-hidden"
-            >
-              {participant.stream && participant.videoEnabled ? (
-                <video
-                  autoPlay
-                  playsInline
-                  ref={(el) => {
-                    if (el) el.srcObject = participant.stream || null;
-                  }}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-700">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">
-                    {participant.name[0]?.toUpperCase()}
+          {participants
+            .filter((participant) => participant.id)
+            .map((participant) => (
+              <div
+                key={participant.id}
+                className="relative bg-gray-800 rounded-lg overflow-hidden"
+              >
+                {participant.stream && participant.videoEnabled ? (
+                  <video
+                    autoPlay
+                    playsInline
+                    ref={(el) => {
+                      if (el) el.srcObject = participant.stream || null;
+                    }}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-700">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">
+                      {participant.name[0]?.toUpperCase()}
+                    </div>
                   </div>
+                )}
+                <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 px-3 py-1 rounded-full text-white text-sm">
+                  {participant.name}
                 </div>
-              )}
-              <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 px-3 py-1 rounded-full text-white text-sm">
-                {participant.name}
+                {!participant.audioEnabled && (
+                  <div className="absolute top-4 right-4 bg-red-500 p-2 rounded-full">
+                    <MicOff className="w-4 h-4 text-white" />
+                  </div>
+                )}
               </div>
-              {!participant.audioEnabled && (
-                <div className="absolute top-4 right-4 bg-red-500 p-2 rounded-full">
-                  <MicOff className="w-4 h-4 text-white" />
-                </div>
-              )}
-            </div>
-          ))}
+            ))}
         </div>
       </div>
 

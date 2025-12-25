@@ -151,14 +151,27 @@ app.prepare().then(() => {
 
     // Video call signaling
     socket.on("call:join", (data) => {
+      console.log(
+        "📹 User joining call:",
+        data.userId,
+        "in room:",
+        data.callId
+      );
       socket.join(data.callId);
       socket.to(data.callId).emit("call:user-joined", {
         userId: data.userId,
         userName: data.userName,
       });
+      console.log("✅ Notified room", data.callId, "about user:", data.userId);
     });
 
     socket.on("call:offer", (data) => {
+      console.log(
+        "📤 Forwarding offer from",
+        data.from,
+        "to room:",
+        data.callId
+      );
       socket.to(data.callId).emit("call:offer", {
         offer: data.offer,
         from: data.from,
@@ -166,6 +179,12 @@ app.prepare().then(() => {
     });
 
     socket.on("call:answer", (data) => {
+      console.log(
+        "📤 Forwarding answer from",
+        data.from,
+        "to room:",
+        data.callId
+      );
       socket.to(data.callId).emit("call:answer", {
         answer: data.answer,
         from: data.from,
@@ -173,6 +192,12 @@ app.prepare().then(() => {
     });
 
     socket.on("call:ice-candidate", (data) => {
+      console.log(
+        "❄️ Forwarding ICE candidate from",
+        data.from,
+        "to room:",
+        data.callId
+      );
       socket.to(data.callId).emit("call:ice-candidate", {
         candidate: data.candidate,
         from: data.from,

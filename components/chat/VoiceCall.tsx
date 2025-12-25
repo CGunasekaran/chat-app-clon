@@ -145,7 +145,7 @@ export default function VoiceCall({
           audio.autoplay = true;
           audio.volume = 1.0;
           audio.controls = false;
-          audio.playsInline = true;
+          audio.setAttribute("playsinline", "true");
 
           // Attach to DOM for browser compatibility
           audio.style.display = "none";
