@@ -218,3 +218,17 @@ model NotificationPreferences {
   @@index([userId])
   @@index([groupId])
 }
+
+model PushSubscription {
+  id          String   @id @default(cuid())
+  endpoint    String   @unique
+  p256dh      String
+  auth        String
+  userId      String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([endpoint])
+}
