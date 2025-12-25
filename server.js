@@ -25,9 +25,12 @@ app.prepare().then(() => {
   });
 
   io.on("connection", (socket) => {
+    console.log("🔌 New socket connection:", socket.id);
+
     // Join user-specific room for direct calls
     socket.on("join-user-room", (userId) => {
       socket.join(`user-${userId}`);
+      console.log("👤 User joined room: user-" + userId, "socket:", socket.id);
     });
 
     socket.on("join-group", (groupId) => {
@@ -84,10 +87,30 @@ app.prepare().then(() => {
     });
 
     socket.on("voice-signal", (data) => {
+      console.log(
+        "📡 Voice signal received:",
+        data.signal.type,
+        "to:",
+        data.to
+      );
       io.to(data.to).emit("voice-signal", {
         signal: data.signal,
-        from: socket.id,
+        from: data.to, // Use the 'to' field as reference, receiver knows who it's from
       });
+      console.log("📡 Voice signal forwarded to:", data.to);
+    });
+
+    socket.on("voice-call-ready", (data) => {
+      console.log(
+        "✅ User ready for voice call, notifying:",
+        data.to,
+        "from:",
+        data.from
+      );
+      io.to(data.to).emit("voice-call-ready", {
+        from: data.from,
+      });
+      console.log("✅ Emitted voice-call-ready to room:", data.to);
     });
 
     socket.on("end-voice-call", (data) => {

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     // Check if email is verified (skip in development)
     const isDevelopment = process.env.NODE_ENV === "development";
-    
+
     if (!isDevelopment) {
       const verification = await prisma.emailVerification.findFirst({
         where: {

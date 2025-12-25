@@ -43,7 +43,7 @@ export default function NotificationSettings() {
         <h3 className="text-lg font-medium text-gray-900 mb-4">
           Notification Settings
         </h3>
-        
+
         {/* Browser Notifications */}
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
@@ -58,7 +58,7 @@ export default function NotificationSettings() {
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               {permission === "default" && (
                 <button
@@ -69,14 +69,14 @@ export default function NotificationSettings() {
                   {loading ? "Loading..." : "Enable"}
                 </button>
               )}
-              
+
               {permission === "granted" && (
                 <span className="flex items-center gap-1 text-sm text-green-600">
                   <Bell className="w-4 h-4" />
                   Enabled
                 </span>
               )}
-              
+
               {permission === "denied" && (
                 <span className="flex items-center gap-1 text-sm text-red-600">
                   <BellOff className="w-4 h-4" />
@@ -100,7 +100,7 @@ export default function NotificationSettings() {
                   </p>
                 </div>
               </div>
-              
+
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
@@ -142,7 +142,7 @@ export default function NotificationSettings() {
             />
             <span className="text-sm text-gray-700">Default Sound</span>
           </label>
-          
+
           <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50">
             <input
               type="radio"

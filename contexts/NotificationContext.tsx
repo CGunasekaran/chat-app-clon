@@ -4,7 +4,11 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 
 interface NotificationContextType {
-  showNotification: (title: string, body: string, options?: NotificationOptions) => void;
+  showNotification: (
+    title: string,
+    body: string,
+    options?: NotificationOptions
+  ) => void;
   requestPermission: () => Promise<NotificationPermission>;
   permission: NotificationPermission;
   isSupported: boolean;
@@ -22,7 +26,8 @@ export function NotificationProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [permission, setPermission] = useState<NotificationPermission>("default");
+  const [permission, setPermission] =
+    useState<NotificationPermission>("default");
   const [isSupported, setIsSupported] = useState(false);
   const [isPushEnabled, setIsPushEnabled] = useState(false);
 
@@ -58,13 +63,13 @@ export function NotificationProvider({
     try {
       const result = await Notification.requestPermission();
       setPermission(result);
-      
+
       if (result === "granted") {
         toast.success("Notifications enabled!");
       } else if (result === "denied") {
         toast.error("Notification permission denied");
       }
-      
+
       return result;
     } catch (error) {
       console.error("Error requesting notification permission:", error);
@@ -185,7 +190,7 @@ export function NotificationProvider({
 
       if (subscription) {
         await subscription.unsubscribe();
-        
+
         // Remove subscription from server
         await fetch("/api/push/unsubscribe", {
           method: "POST",

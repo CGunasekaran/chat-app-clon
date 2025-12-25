@@ -69,7 +69,7 @@ self.addEventListener("notificationclick", (event) => {
 
 self.addEventListener("pushsubscriptionchange", (event) => {
   console.log("Push subscription changed:", event);
-  
+
   event.waitUntil(
     self.registration.pushManager
       .subscribe(event.oldSubscription.options)

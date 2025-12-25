@@ -24,26 +24,13 @@ export default function IncomingCall({
 
   // Cleanup function to stop all audio
   const stopAllAudio = () => {
-    // Stop HTML Audio element
-    if (audioRef.current) {
-      try {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current.src = "";
-        audioRef.current.load();
-      } catch (err) {
-        console.error("Error stopping audio:", err);
-      }
-      audioRef.current = null;
-    }
-
-    // Stop pulse interval
+    // Stop pulse interval FIRST
     if (pulseIntervalRef.current) {
       clearInterval(pulseIntervalRef.current);
       pulseIntervalRef.current = null;
     }
 
-    // Stop oscillator
+    // Stop oscillator immediately
     if (oscillatorRef.current) {
       try {
         oscillatorRef.current.stop();
@@ -54,7 +41,7 @@ export default function IncomingCall({
       oscillatorRef.current = null;
     }
 
-    // Disconnect gain node
+    // Disconnect gain node immediately
     if (gainNodeRef.current) {
       try {
         gainNodeRef.current.disconnect();
@@ -64,14 +51,32 @@ export default function IncomingCall({
       gainNodeRef.current = null;
     }
 
-    // Close audio context
-    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+    // Stop HTML Audio element immediately
+    if (audioRef.current) {
       try {
-        audioContextRef.current.close();
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.src = "";
+        audioRef.current.load();
       } catch (err) {
-        console.error("Error closing audio context:", err);
+        // Ignore errors
       }
-      audioContextRef.current = null;
+      audioRef.current = null;
+    }
+
+    // Close audio context (async but non-blocking)
+    if (audioContextRef.current) {
+      const context = audioContextRef.current;
+      audioContextRef.current = null; // Clear reference immediately
+
+      try {
+        if (context.state !== "closed") {
+          // Close immediately without waiting
+          context.close().catch(() => {});
+        }
+      } catch (err) {
+        // Ignore all errors
+      }
     }
   };
 

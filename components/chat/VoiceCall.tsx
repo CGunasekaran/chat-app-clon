@@ -26,6 +26,7 @@ export default function VoiceCall({
   const [callStatus, setCallStatus] = useState<string>(
     isInitiator ? "Calling..." : "Connecting..."
   );
+  const [otherUserReady, setOtherUserReady] = useState(false);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudiosRef = useRef<Map<string, HTMLAudioElement>>(new Map());
   const peerRef = useRef<Peer.Instance | null>(null);
@@ -51,10 +52,25 @@ export default function VoiceCall({
           return;
         }
 
+        console.log("🎤 Got local audio stream:", stream);
+        console.log("🎤 Local audio tracks:", stream.getAudioTracks());
+        console.log("🆔 My userId:", userId, "Other userId:", otherUserId);
+        console.log(
+          "🎯 Will emit voice-call-ready to room:",
+          `user-${otherUserId}`
+        );
+
         localStreamRef.current = stream;
         setCallStatus("Ready");
 
-        // Create peer connection
+        // Notify the other user that we're ready for the call
+        console.log("📢 Notifying other user we're ready");
+        socket.emit("voice-call-ready", {
+          to: `user-${otherUserId}`,
+          from: userId,
+        });
+
+        // Create peer connection but don't start negotiation yet for initiator
         const peer = new Peer({
           initiator: isInitiator,
           trickle: false,
@@ -67,25 +83,118 @@ export default function VoiceCall({
           },
         });
 
+        console.log("📞 Peer created, initiator:", isInitiator);
         peerRef.current = peer;
 
+        // Buffer signals if we're the initiator and other user isn't ready yet
+        const signalBuffer: Peer.SignalData[] = [];
+        let canSendSignals = !isInitiator; // Receiver can send immediately
+
         peer.on("signal", (signal: Peer.SignalData) => {
-          console.log("Sending signal:", signal.type, "to:", otherUserId);
-          socket.emit("voice-signal", {
-            signal,
-            to: `user-${otherUserId}`,
-          });
+          console.log("📤 Generated signal:", signal.type);
+
+          if (canSendSignals || !isInitiator) {
+            console.log("📤 Sending signal:", signal.type, "to:", otherUserId);
+            socket.emit("voice-signal", {
+              signal,
+              to: `user-${otherUserId}`,
+            });
+            console.log("📤 Signal emitted to room: user-" + otherUserId);
+          } else {
+            console.log(
+              "⏸️ Buffering signal until other user is ready:",
+              signal.type
+            );
+            signalBuffer.push(signal);
+          }
         });
 
+        // Listen for when other user is ready
+        const handleOtherUserReady = () => {
+          console.log("✅ Other user is ready! Can now send signals.");
+          setOtherUserReady(true);
+          canSendSignals = true;
+
+          // Send any buffered signals
+          if (signalBuffer.length > 0) {
+            console.log("📤 Sending buffered signals:", signalBuffer.length);
+            signalBuffer.forEach((signal) => {
+              socket.emit("voice-signal", {
+                signal,
+                to: `user-${otherUserId}`,
+              });
+            });
+            signalBuffer.length = 0;
+          }
+        };
+
+        console.log(
+          "👂 Registering voice-call-ready listener for userId:",
+          userId
+        );
+        socket.on("voice-call-ready", handleOtherUserReady);
+
         peer.on("stream", (remoteStream: MediaStream) => {
-          console.log("Received remote stream");
-          const audio = new Audio();
+          console.log("🎵 Received remote stream", remoteStream);
+          console.log("🎵 Remote stream tracks:", remoteStream.getTracks());
+          console.log("🎵 Audio tracks:", remoteStream.getAudioTracks());
+
+          // Create audio element
+          const audio = document.createElement("audio");
           audio.srcObject = remoteStream;
           audio.autoplay = true;
-          audio.play().catch(console.error);
+          audio.volume = 1.0;
+          audio.controls = false;
+          audio.playsInline = true;
+
+          // Attach to DOM for browser compatibility
+          audio.style.display = "none";
+          document.body.appendChild(audio);
+
+          // Log stream info
+          console.log("🎵 Audio element created and attached to DOM");
+          console.log("🎵 srcObject set:", audio.srcObject !== null);
+
+          // Try to play immediately
+          const playPromise = audio.play();
+
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                console.log("✅ Remote audio playing successfully");
+                console.log("✅ Audio paused:", audio.paused);
+                console.log("✅ Audio volume:", audio.volume);
+                setCallStatus("Call in progress");
+              })
+              .catch((err) => {
+                console.error("❌ Error playing remote audio:", err);
+                console.error("❌ Error name:", err.name);
+                console.error("❌ Error message:", err.message);
+
+                // Try again with user interaction
+                setCallStatus("Tap to enable audio");
+
+                // Add click listener to retry playback
+                const retryPlay = () => {
+                  console.log("🔄 Retrying audio playback...");
+                  audio
+                    .play()
+                    .then(() => {
+                      console.log(
+                        "✅ Audio playback enabled after user interaction"
+                      );
+                      setCallStatus("Call in progress");
+                      document.removeEventListener("click", retryPlay);
+                    })
+                    .catch((retryErr) => {
+                      console.error("❌ Retry failed:", retryErr);
+                    });
+                };
+                document.addEventListener("click", retryPlay, { once: true });
+              });
+          }
 
           remoteAudiosRef.current.set(groupId || "remote", audio);
-          setCallStatus("Call in progress");
         });
 
         peer.on("connect", () => {
@@ -103,6 +212,10 @@ export default function VoiceCall({
           remoteAudiosRef.current.forEach((audio) => {
             audio.pause();
             audio.srcObject = null;
+            // Remove from DOM
+            if (audio.parentNode) {
+              audio.parentNode.removeChild(audio);
+            }
           });
           remoteAudiosRef.current.clear();
         });
@@ -115,17 +228,24 @@ export default function VoiceCall({
           signal: Peer.SignalData;
           from: string;
         }) => {
-          console.log("Received signal:", signal.type, "from:", from);
+          console.log("📥 Received signal:", signal.type, "from:", from);
+          console.log("📥 Peer exists:", !!peerRef.current);
+          console.log("📥 Peer destroyed:", peerRef.current?.destroyed);
 
           if (peerRef.current && !peerRef.current.destroyed) {
             try {
+              console.log("📥 Signaling peer with:", signal.type);
               peerRef.current.signal(signal);
+              console.log("✅ Signal processed successfully");
             } catch (err) {
-              console.error("Error signaling peer:", err);
+              console.error("❌ Error signaling peer:", err);
             }
+          } else {
+            console.error("❌ Cannot signal: peer is null or destroyed");
           }
         };
 
+        console.log("👂 Registering voice-signal listener");
         socket.on("voice-signal", handleSignal);
 
         // Listen for call ended by other party
@@ -141,6 +261,10 @@ export default function VoiceCall({
           remoteAudiosRef.current.forEach((audio) => {
             audio.pause();
             audio.srcObject = null;
+            // Remove from DOM
+            if (audio.parentNode) {
+              audio.parentNode.removeChild(audio);
+            }
           });
           remoteAudiosRef.current.clear();
           onClose();
@@ -152,6 +276,7 @@ export default function VoiceCall({
         return () => {
           socket.off("voice-signal", handleSignal);
           socket.off("voice-call-ended", handleCallEnded);
+          socket.off("voice-call-ready", handleOtherUserReady);
         };
       })
       .catch((error) => {
@@ -174,6 +299,10 @@ export default function VoiceCall({
       remoteAudiosRef.current.forEach((audio) => {
         audio.pause();
         audio.srcObject = null;
+        // Remove from DOM
+        if (audio.parentNode) {
+          audio.parentNode.removeChild(audio);
+        }
       });
       remoteAudiosRef.current.clear();
 
@@ -222,6 +351,21 @@ export default function VoiceCall({
     }
   };
 
+  const handleEnableAudio = () => {
+    // Force play all remote audio streams
+    remoteAudiosRef.current.forEach((audio) => {
+      audio
+        .play()
+        .then(() => {
+          console.log("✅ Audio enabled successfully");
+          setCallStatus("Call in progress");
+        })
+        .catch((err) => {
+          console.error("Failed to enable audio:", err);
+        });
+    });
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-8 w-96 shadow-2xl">
@@ -231,6 +375,15 @@ export default function VoiceCall({
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Voice Call</h2>
           <p className="text-gray-600">{callStatus}</p>
+
+          {callStatus === "Tap to enable audio" && (
+            <button
+              onClick={handleEnableAudio}
+              className="mt-4 px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-all"
+            >
+              Enable Audio
+            </button>
+          )}
         </div>
 
         <div className="flex justify-center gap-6">

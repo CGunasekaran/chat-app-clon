@@ -42,7 +42,6 @@ async function createTestUser() {
     console.log(`👑 Admin: ${user.isAdmin}`);
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     console.log("🎯 You can now login at: http://localhost:3000/login");
-
   } catch (error) {
     console.error("❌ Error creating test user:", error.message);
   } finally {

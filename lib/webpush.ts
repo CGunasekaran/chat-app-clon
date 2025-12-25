@@ -8,8 +8,7 @@ const vapidKeys = {
   publicKey:
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
     "BEL5nJp5K8xH0QZQGYqVMqJ5KzLQ5XYwXZ7C8qLvZ5pQ0QYZ5KzLQ5XYwXZ7C8qLvZ5pQ0QYZ5KzLQ5XYwXZ7C8",
-  privateKey:
-    process.env.VAPID_PRIVATE_KEY || "your-private-key-here",
+  privateKey: process.env.VAPID_PRIVATE_KEY || "your-private-key-here",
 };
 
 if (vapidKeys.publicKey && vapidKeys.privateKey) {
