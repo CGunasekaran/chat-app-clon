@@ -20,6 +20,60 @@ export default function IncomingCall({
   const audioContextRef = useRef<AudioContext | null>(null);
   const oscillatorRef = useRef<OscillatorNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
+  const pulseIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup function to stop all audio
+  const stopAllAudio = () => {
+    // Stop HTML Audio element
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.src = "";
+        audioRef.current.load();
+      } catch (err) {
+        console.error("Error stopping audio:", err);
+      }
+      audioRef.current = null;
+    }
+
+    // Stop pulse interval
+    if (pulseIntervalRef.current) {
+      clearInterval(pulseIntervalRef.current);
+      pulseIntervalRef.current = null;
+    }
+
+    // Stop oscillator
+    if (oscillatorRef.current) {
+      try {
+        oscillatorRef.current.stop();
+        oscillatorRef.current.disconnect();
+      } catch (err) {
+        // Already stopped
+      }
+      oscillatorRef.current = null;
+    }
+
+    // Disconnect gain node
+    if (gainNodeRef.current) {
+      try {
+        gainNodeRef.current.disconnect();
+      } catch (err) {
+        // Already disconnected
+      }
+      gainNodeRef.current = null;
+    }
+
+    // Close audio context
+    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+      try {
+        audioContextRef.current.close();
+      } catch (err) {
+        console.error("Error closing audio context:", err);
+      }
+      audioContextRef.current = null;
+    }
+  };
 
   useEffect(() => {
     // Try to play notification sound file first
@@ -55,8 +109,9 @@ export default function IncomingCall({
           gainNodeRef.current.gain.value = 0.3;
 
           // Create pulsing effect
-          const pulseInterval = setInterval(() => {
-            if (gainNodeRef.current) {
+          pulseIntervalRef.current = setInterval(() => {
+            if (gainNodeRef.current && audioContextRef.current) {
+              const context = audioContextRef.current;
               gainNodeRef.current.gain.setValueAtTime(0.3, context.currentTime);
               gainNodeRef.current.gain.exponentialRampToValueAtTime(
                 0.01,
@@ -66,9 +121,6 @@ export default function IncomingCall({
           }, 1000);
 
           oscillatorRef.current.start();
-
-          // Store interval for cleanup
-          (oscillatorRef.current as any).pulseInterval = pulseInterval;
         } catch (err) {
           console.error("Failed to create audio context:", err);
         }
@@ -77,99 +129,17 @@ export default function IncomingCall({
 
     // Stop ringtone on unmount
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current.src = "";
-        audioRef.current.load();
-        audioRef.current = null;
-      }
-      if (oscillatorRef.current) {
-        try {
-          clearInterval((oscillatorRef.current as any).pulseInterval);
-          oscillatorRef.current.stop();
-          oscillatorRef.current.disconnect();
-        } catch (err) {
-          // Oscillator may already be stopped
-        }
-        oscillatorRef.current = null;
-      }
-      if (gainNodeRef.current) {
-        try {
-          gainNodeRef.current.disconnect();
-        } catch (err) {
-          // May already be disconnected
-        }
-        gainNodeRef.current = null;
-      }
-      if (audioContextRef.current) {
-        if (audioContextRef.current.state !== "closed") {
-          audioContextRef.current.close();
-        }
-        audioContextRef.current = null;
-      }
+      stopAllAudio();
     };
   }, []);
 
   const handleAccept = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.src = "";
-      audioRef.current.load();
-    }
-    if (oscillatorRef.current) {
-      try {
-        clearInterval((oscillatorRef.current as any).pulseInterval);
-        oscillatorRef.current.stop();
-        oscillatorRef.current.disconnect();
-      } catch (err) {
-        // Oscillator may already be stopped
-      }
-    }
-    if (gainNodeRef.current) {
-      try {
-        gainNodeRef.current.disconnect();
-      } catch (err) {
-        // May already be disconnected
-      }
-    }
-    if (audioContextRef.current) {
-      if (audioContextRef.current.state !== "closed") {
-        audioContextRef.current.close();
-      }
-    }
+    stopAllAudio();
     onAccept();
   };
 
   const handleReject = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.src = "";
-      audioRef.current.load();
-    }
-    if (oscillatorRef.current) {
-      try {
-        clearInterval((oscillatorRef.current as any).pulseInterval);
-        oscillatorRef.current.stop();
-        oscillatorRef.current.disconnect();
-      } catch (err) {
-        // Oscillator may already be stopped
-      }
-    }
-    if (gainNodeRef.current) {
-      try {
-        gainNodeRef.current.disconnect();
-      } catch (err) {
-        // May already be disconnected
-      }
-    }
-    if (audioContextRef.current) {
-      if (audioContextRef.current.state !== "closed") {
-        audioContextRef.current.close();
-      }
-    }
+    stopAllAudio();
     onReject();
   };
 

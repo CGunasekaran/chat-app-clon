@@ -33,31 +33,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if email is verified
-    const verification = await prisma.emailVerification.findFirst({
-      where: {
-        email,
-        verified: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    // Check if email is verified (skip in development)
+    const isDevelopment = process.env.NODE_ENV === "development";
+    
+    if (!isDevelopment) {
+      const verification = await prisma.emailVerification.findFirst({
+        where: {
+          email,
+          verified: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
 
-    if (!verification) {
-      return NextResponse.json(
-        { error: "Email not verified. Please verify your email first." },
-        { status: 400 }
-      );
-    }
+      if (!verification) {
+        return NextResponse.json(
+          { error: "Email not verified. Please verify your email first." },
+          { status: 400 }
+        );
+      }
 
-    // Check if verification is not too old (valid for 1 hour)
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    if (verification.createdAt < oneHourAgo) {
-      return NextResponse.json(
-        { error: "Email verification expired. Please verify again." },
-        { status: 400 }
-      );
+      // Check if verification is not too old (valid for 1 hour)
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      if (verification.createdAt < oneHourAgo) {
+        return NextResponse.json(
+          { error: "Email verification expired. Please verify again." },
+          { status: 400 }
+        );
+      }
     }
 
     // Hash password
@@ -78,10 +82,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Delete used verification records
-    await prisma.emailVerification.deleteMany({
-      where: { email },
-    });
+    // Delete used verification records (only if verified in production)
+    if (!isDevelopment) {
+      await prisma.emailVerification.deleteMany({
+        where: { email },
+      });
+    }
 
     return NextResponse.json(
       {
