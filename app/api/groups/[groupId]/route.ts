@@ -64,6 +64,12 @@ export async function DELETE(
     where: { id: groupId },
     select: {
       adminId: true,
+      isOneToOne: true,
+      members: {
+        select: {
+          userId: true,
+        },
+      },
     },
   });
 
@@ -71,18 +77,35 @@ export async function DELETE(
     return NextResponse.json({ error: "Group not found" }, { status: 404 });
   }
 
-  // Check if user is the admin
-  if (group.adminId !== session.user.id) {
-    return NextResponse.json(
-      { error: "Only the admin can delete the group" },
-      { status: 403 }
+  // For one-on-one chats, allow any participant to delete
+  if (group.isOneToOne) {
+    const isMember = group.members.some(
+      (member) => member.userId === session.user.id
     );
+    if (!isMember) {
+      return NextResponse.json(
+        { error: "You are not a participant of this chat" },
+        { status: 403 }
+      );
+    }
+  } else {
+    // For group chats, only the admin can delete
+    if (group.adminId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Only the admin can delete the group" },
+        { status: 403 }
+      );
+    }
   }
 
-  // Delete the group (members and messages will be cascade deleted)
+  // Delete the group (members, messages, calls will be cascade deleted due to schema relations)
   await prisma.group.delete({
     where: { id: groupId },
   });
 
-  return NextResponse.json({ message: "Group deleted successfully" });
+  return NextResponse.json({
+    message: group.isOneToOne
+      ? "Chat deleted successfully"
+      : "Group deleted successfully",
+  });
 }

@@ -914,7 +914,9 @@ export default function ChatPage() {
 
       setAlertDialog({
         isOpen: true,
-        message: "Group deleted successfully",
+        message: group?.isOneToOne
+          ? "Chat deleted successfully"
+          : "Group deleted successfully",
         type: "success",
         onClose: () => {
           setAlertDialog({ isOpen: false, message: "", type: "success" });
@@ -1010,6 +1012,15 @@ export default function ChatPage() {
                   title="View members"
                 >
                   <Users className="w-5 h-5" />
+                </button>
+              )}
+              {group?.isOneToOne && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-2 hover:bg-red-600 rounded-full transition-colors"
+                  title="Delete chat"
+                >
+                  <Trash2 className="w-5 h-5" />
                 </button>
               )}
               {isAdmin && !group?.isOneToOne && (
@@ -1241,11 +1252,12 @@ export default function ChatPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-xl font-bold text-gray-900 mb-4">
-                Delete Group?
+                {group?.isOneToOne ? "Delete Chat?" : "Delete Group?"}
               </h3>
               <p className="text-gray-600 mb-6">
-                Are you sure you want to delete this group? This action cannot
-                be undone and all messages will be permanently deleted.
+                {group?.isOneToOne
+                  ? "Are you sure you want to delete this chat? All messages, call history, and chat data will be permanently deleted. This action cannot be undone."
+                  : "Are you sure you want to delete this group? This action cannot be undone and all messages will be permanently deleted."}
               </p>
               <div className="flex gap-3">
                 <button
