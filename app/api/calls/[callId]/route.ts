@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 // Update call (end call, set duration, etc.)
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { callId: string } }
+  context: { params: Promise<{ callId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -14,7 +14,7 @@ export async function PATCH(
   }
 
   try {
-    const { callId } = params;
+    const { callId } = await context.params;
     const { status, endedAt, duration } = await req.json();
 
     // Find the call
