@@ -5,8 +5,8 @@ const next = require("next");
 const { Server } = require("socket.io");
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
-const port = 3000;
+const hostname = process.env.HOST || "0.0.0.0";
+const port = parseInt(process.env.PORT || "3000", 10);
 
 const app = next({ dev, hostname, port, turbo: false });
 const handle = app.getRequestHandler();
@@ -17,11 +17,22 @@ app.prepare().then(() => {
     await handle(req, res, parsedUrl);
   });
 
+  // Configure CORS based on environment
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : dev
+    ? ["http://localhost:3000"]
+    : [process.env.NEXTAUTH_URL || "*"];
+
   const io = new Server(httpServer, {
     cors: {
-      origin: "*",
+      origin: allowedOrigins,
       methods: ["GET", "POST"],
+      credentials: true,
     },
+    transports: ["websocket", "polling"],
+    pingTimeout: 60000,
+    pingInterval: 25000,
   });
 
   io.on("connection", (socket) => {
@@ -225,8 +236,15 @@ app.prepare().then(() => {
       });
     });
 
-    socket.on("disconnect", () => {});
+    socket.on("disconnect", () => {
+      console.log("🔌 Socket disconnected:", socket.id);
+    });
   });
 
-  httpServer.listen(port, () => {});
+  httpServer.listen(port, hostname, () => {
+    console.log(
+      `> Server ready on ${dev ? "http" : "https"}://${hostname}:${port}`
+    );
+    console.log(`> Environment: ${process.env.NODE_ENV}`);
+  });
 });
